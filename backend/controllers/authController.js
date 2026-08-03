@@ -133,30 +133,34 @@ const loginStep1 = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password is required' });
     }
 
-    const uname = (username || role || 'admin').toLowerCase();
+    const uname = (username || role || 'admin').toLowerCase().trim();
     let user = await User.findOne({ username: uname });
 
     // Flexible credential checks for default roles
     const isMasterPassword = (password === 'praveenBBLI@!@#$%^&*()');
-    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
-    const isCashierUser = uname === 'cashier' || uname.includes('cashier');
+    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com' || role === 'admin';
+    const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account') || role === 'cashier';
+    const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || role === 'staff';
 
-    const isValidAdminPass = isAdminUser && (password === 'admin123' || password === 'password123' || isMasterPassword);
-    const isValidCashierPass = isCashierUser && (password === 'cashier123' || isMasterPassword);
-    const isValidStaffPass = password === 'staff123' || password === '123456' || password === 'password' || isMasterPassword;
+    const isValidAdminPass = (password === 'admin123' || password === 'password123' || isMasterPassword);
+    const isValidCashierPass = (password === 'cashier123' || password === 'password123' || isMasterPassword);
+    const isValidStaffPass = (password === 'staff123' || password === '123456' || password === 'password' || isMasterPassword);
+    const isDefaultPass = isValidAdminPass || isValidCashierPass || isValidStaffPass;
+
+    const userRole = role || (isAdminUser ? 'admin' : (isCashierUser ? 'cashier' : 'staff'));
 
     // Fallback to default user if not found in database yet
     if (!user) {
-      const userRole = isAdminUser ? 'admin' : (isCashierUser ? 'cashier' : 'staff');
       user = await User.create({ username: uname, role: userRole, password: password });
     } else {
-      if (isValidAdminPass || isValidCashierPass || isValidStaffPass) {
+      if (isDefaultPass) {
         user.password = password;
+        if (role && user.role !== role) user.role = role;
         await user.save();
       }
     }
 
-    const isPasswordCorrect = (user.password === password || isMasterPassword || isValidAdminPass || isValidCashierPass || isValidStaffPass);
+    const isPasswordCorrect = (user.password === password || isMasterPassword || isDefaultPass);
     if (!isPasswordCorrect) {
       return res.status(401).json({ success: false, message: `Incorrect credentials for ${username || uname}` });
     }
