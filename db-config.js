@@ -30,6 +30,14 @@ export function normalizeStudentSets(sets) {
   return normalized;
 }
 
+// Default Initial Data Schema
+const DEFAULT_MOCK_DATA = {
+  stocks: [],
+  students: [],
+  transactions: [],
+  bills: []
+};
+
 // ----------------------------------------------------
 // Mock Data Layer
 // ----------------------------------------------------
@@ -638,8 +646,11 @@ class MongoApiDB {
         headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
         ...options,
       });
+      if (!res.ok) {
+        throw new Error(`API Request failed with status ${res.status}`);
+      }
       const data = await res.json();
-      if (!res.ok || data.success === false) {
+      if (data.success === false) {
         throw new Error(data.message || 'API Request failed');
       }
       return data;

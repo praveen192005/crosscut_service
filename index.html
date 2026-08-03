@@ -209,10 +209,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-        const data = await response.json();
-        if (response.ok && data.success !== false) {
-          if (data.role) role = data.role.toLowerCase();
-          if (data.username) userPayload.username = data.username;
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success !== false) {
+            if (data.role) role = data.role.toLowerCase();
+            if (data.username) userPayload.username = data.username;
+          }
         }
       } catch (err) {
         console.warn('API connection notice:', err);
