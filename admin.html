@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CROSS CUT ENTERPRISES - Management Control Portal (Admin)</title>
+  <link rel="stylesheet" href="style.css?v=20260804">
+  <style>
+    /* Force override background - remove any cached image background */
+    body, .auth-wrapper {
+      background-image: none !important;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    }
+  </style>
+  
+
+
+  <!-- Application Main Controller -->
+  <script type="module" src="app.js?v=20260825"></script>
+</head>
+<body>
+
+  <!-- ======================================================== -->
+  <!-- 1. MANAGEMENT AUTHENTICATION LOGIN -->
+  <!-- ======================================================== -->
+  <div id="auth-screen" class="auth-wrapper">
+    <div class="auth-card glass-panel">
+      
+      <div class="logo-icon auth-logo">CC</div>
+      
+      <div class="auth-header">
+        <h1>CROSS CUT ENTERPRISES</h1>
+        <p>Management Control Portal (Admin)</p>
+      </div>
+
+      <form id="admin-login-form" onsubmit="event.preventDefault(); if(window.handleAdminLoginSubmit) window.handleAdminLoginSubmit(event); return false;">
+        <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+          <label for="auth-admin-username">Admin User ID</label>
+          <input type="text" id="auth-admin-username" class="input-ctrl" 
+                 placeholder="Enter Admin User ID" required>
+        </div>
+        <div class="form-group" style="text-align: left;">
+          <label for="auth-admin-password">Management Admin Password</label>
+          <input type="password" id="auth-admin-password" class="input-ctrl" 
+                 placeholder="••••••••" required>
+        </div>
+        
+        <button type="button" id="btn-admin-login-submit" class="btn btn-primary" onclick="if(window.handleAdminLoginSubmit) window.handleAdminLoginSubmit(event);" style="width: 100%; margin-top: 10px;">
+          Access Admin Dashboard 🔓
+        </button>
+      </form>
+
+      <!-- Separated Nav and DB Wizard settings (Demo login button removed) -->
+      <div style="margin-top: 32px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <a href="index.html" class="btn btn-primary" style="width: 100%; text-decoration: none;">
+          🏢 Back to Gateway Landing Page
+        </a>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 2. MAIN ADMIN APP PORTAL LAYOUT -->
+  <!-- ======================================================== -->
+  <div id="main-app" class="app-container" style="display: none;">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="logo-container">
+        <div class="logo-icon">CC</div>
+        <div class="logo-text">
+          <span class="logo-title">CROSS CUT ENTERPRISES</span>
+          <span class="logo-subtitle">Management Control</span>
+        </div>
+      </div>
+      
+      <nav style="flex-grow: 1;">
+        <ul id="sidebar-nav" class="nav-menu">
+          <li class="nav-item active" data-view="dashboard">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+              Admin Dashboard
+            </a>
+          </li>
+          <li class="nav-item" data-view="requests">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+              Sizing Requests
+            </a>
+          </li>
+          <li class="nav-item" data-view="admin-students">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+              Student Directory
+            </a>
+          </li>
+          <li class="nav-item" data-view="logs">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M13 3H6v18h4v-6h4v6h4V3h-5zm1 5h-2v2h2V8zm-4 0H8v2h2V8zm4 4h-2v2h2v-2zm-4 0H8v2h2v-2z"/></svg>
+              Audit Activity Logs
+            </a>
+          </li>
+          <li class="nav-item" data-view="billing">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+              Billing & Accounts
+            </a>
+          </li>
+          <li class="nav-item" data-view="settings">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+              Portal Settings
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">⚙️</div>
+          <div class="user-info">
+            <span class="user-name">Administrator</span>
+            <span class="user-role">Management Control</span>
+          </div>
+        </div>
+        <!-- Quick navigation switch to Staff Portal / Cashier Portal -->
+        <a href="staff.html" class="btn btn-primary btn-sm" style="width: 100%; text-decoration: none; font-size: 0.8rem; margin-top: 8px; margin-bottom: 2px;">
+          📦 Go to Staff Portal
+        </a>
+        <a href="accounts.html" class="btn btn-secondary btn-sm" style="width: 100%; text-decoration: none; font-size: 0.8rem; margin-top: 2px; margin-bottom: 2px;">
+          💰 Go to Accounts Portal
+        </a>
+        <a href="index.html" class="btn btn-outline btn-sm" style="width: 100%; text-decoration: none; font-size: 0.8rem; margin-top: 2px; margin-bottom: 2px;">
+          🏢 Go to Portal Gateway
+        </a>
+        <button id="btn-logout" class="btn btn-outline btn-sm" style="width: 100%;">
+          🚪 Lock Dashboard
+        </button>
+      </div>
+    </aside>
+
+    <!-- Right Content Frame -->
+    <main class="main-content">
+      
+      <!-- Top Sticky Header -->
+      <header class="top-header">
+        <div class="header-title-container">
+          <h2 id="view-title">Admin Dashboard</h2>
+        </div>
+        
+        <div class="header-controls">
+          <!-- Active Branch Filter Toggle -->
+          <div class="branch-selector-pill">
+            <button class="branch-pill-btn active" data-branch="ALL">ALL Branches</button>
+            <button class="branch-pill-btn" data-branch="BBLI">BBLI</button>
+            <button class="branch-pill-btn" data-branch="BBCS">BBCS</button>
+            <button class="branch-pill-btn" data-branch="BBMS">BBMS</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Body Scroll frame -->
+      <div class="content-body">
+        
+        <!-- ======================================================== -->
+        <!-- VIEW A: ADMIN DASHBOARD -->
+        <!-- ======================================================== -->
+        <section id="view-dashboard" class="view-section active">
+          
+          <!-- KPI Indicator Deck -->
+          <div class="kpi-grid">
+            <div class="glass-panel kpi-card kpi-blue">
+              <div class="kpi-data">
+                <span class="kpi-label">Received Stock</span>
+                <span class="kpi-value" id="kpi-received">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">📥</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-green">
+              <div class="kpi-data">
+                <span class="kpi-label">Issued Stock</span>
+                <span class="kpi-value" id="kpi-issued">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">📤</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-purple">
+              <div class="kpi-data">
+                <span class="kpi-label">Remaining Stock</span>
+                <span class="kpi-value" id="kpi-remaining">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">📦</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-orange">
+              <div class="kpi-data">
+                <span class="kpi-label">Sizing Requests</span>
+                <span class="kpi-value" id="kpi-pending">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">⚠️</div>
+            </div>
+          </div>
+
+          <!-- Branch Analytics Comparison Chart Panel -->
+          <div class="glass-panel">
+            <div class="panel-header">
+              <h3>📈 Branch Uniform Progress Comparison</h3>
+              <p style="font-size: 0.8rem; color: var(--text-secondary);">Percentage of total uniform sets successfully issued</p>
+            </div>
+            <div class="chart-container">
+              <div class="chart-bar-wrapper">
+                <span class="chart-bar-value" id="chart-val-bbli">0%</span>
+                <div class="chart-bar" id="chart-bar-bbli" style="height: 5%;"></div>
+                <span class="chart-bar-label">BBLI Branch</span>
+              </div>
+              <div class="chart-bar-wrapper">
+                <span class="chart-bar-value" id="chart-val-bbcs">0%</span>
+                <div class="chart-bar" id="chart-bar-bbcs" style="height: 5%;"></div>
+                <span class="chart-bar-label">BBCS Branch</span>
+              </div>
+              <div class="chart-bar-wrapper">
+                <span class="chart-bar-value" id="chart-val-bb">0%</span>
+                <div class="chart-bar" id="chart-bar-bb" style="height: 5%;"></div>
+                <span class="chart-bar-label">BBMS Branch</span>
+              </div>
+            </div>
+            <div class="chart-bar-legend">
+              <div class="legend-item">
+                <div class="legend-color" style="background: linear-gradient(to top, var(--primary), var(--accent));"></div>
+                <span>Issuance Ratio (Issued/Allocated Sets)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Stocks Ledger -->
+          <div class="glass-panel">
+            <div class="panel-header">
+              <h3>📦 Active Uniform Sizing Ledger</h3>
+              <div class="panel-controls">
+                <button class="btn btn-danger btn-sm" id="btn-delete-all-stock">
+                  🗑️ Delete All Stocks
+                </button>
+                <button class="btn btn-outline btn-sm" id="btn-export-pdf">
+                  📄 Export Stocks PDF
+                </button>
+                <button class="btn btn-primary btn-sm" id="btn-add-stock-modal">
+                  ➕ Add Received Stock Logs
+                </button>
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Branch</th>
+                    <th>Uniform Type</th>
+                    <th>Part</th>
+                    <th>Category (Gender)</th>
+                    <th>Size</th>
+                    <th>Received Stock</th>
+                    <th>Issued Stock</th>
+                    <th>Remaining Stock</th>
+                    <th>Last Updated</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                  <!-- JS Rendered rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW B: PENDING SIZING REQUESTS -->
+        <!-- ======================================================== -->
+        <section id="view-requests" class="view-section">
+          
+          <div class="glass-panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h3>⚠️ Staff-Logged Sizing Exception Requests</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary);">Active custom sizes and missing stock logs requiring resolution</p>
+              </div>
+              <button class="btn btn-danger btn-sm" id="btn-delete-all-requests">
+                🗑️ Clear All Requests
+              </button>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Branch</th>
+                    <th>Gender Category</th>
+                    <th>Quota Set</th>
+                    <th>Requested Size</th>
+                    <th>Reason / Detail Note</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="requests-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW C2: STUDENT DIRECTORY (ADMIN) -->
+        <!-- ======================================================== -->
+        <section id="view-admin-students" class="view-section">
+          
+          <div class="glass-panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <h3>👥 Registered Student Directory</h3>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <div class="search-box" style="max-width: 280px; display: flex; align-items: center; background: #ffffff; border: 1px solid #cbd5e1; border-radius: var(--radius-md); padding: 6px 12px; width: 100%;">
+                  <input type="text" id="admin-student-search-input" placeholder="Search student or class..." style="background: transparent; border: none; outline: none; color: var(--text-primary); font-size: 0.9rem; width: 100%;">
+                </div>
+                <button class="btn btn-danger btn-sm" id="btn-delete-all-students">
+                  🗑️ Delete All Students
+                </button>
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>Branch</th>
+                    <th>Gender</th>
+                    <th>Grade / Class</th>
+                    <th>Set 1 Allocation</th>
+                    <th>Set 2 Allocation</th>
+                    <th>Set 3 Allocation</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-student-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW C: AUDIT LOGS -->
+        <!-- ======================================================== -->
+        <section id="view-logs" class="view-section">
+          
+          <div class="glass-panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <h3>📜 System Audit Transaction Logs</h3>
+              <button id="btn-header-export-logs-csv" class="btn btn-primary btn-sm">📊 Export Logs CSV</button>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Date / Time</th>
+                    <th>Transaction Type</th>
+                    <th>Details</th>
+                    <th>Operator</th>
+                  </tr>
+                </thead>
+                <tbody id="logs-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW E: BILLING & ACCOUNTS -->
+        <!-- ======================================================== -->
+        <section id="view-billing" class="view-section">
+          
+          <!-- KPI Indicator Deck for Billing -->
+          <div class="kpi-grid">
+            <div class="glass-panel kpi-card kpi-purple">
+              <div class="kpi-data">
+                <span class="kpi-label">Total Invoiced</span>
+                <span class="kpi-value" id="kpi-billing-total">₹0</span>
+              </div>
+              <div class="kpi-icon-wrapper">📄</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-green">
+              <div class="kpi-data">
+                <span class="kpi-label">Total Collected (Paid)</span>
+                <span class="kpi-value" id="kpi-billing-paid">₹0</span>
+              </div>
+              <div class="kpi-icon-wrapper">💰</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-orange">
+              <div class="kpi-data">
+                <span class="kpi-label">Total Outstanding (Pending)</span>
+                <span class="kpi-value" id="kpi-billing-pending">₹0</span>
+              </div>
+              <div class="kpi-icon-wrapper">⏳</div>
+            </div>
+          </div>
+
+          <!-- Billing Ledger -->
+          <div class="glass-panel">
+            <div class="panel-header">
+              <h3>💰 Billing & Accounts Ledger</h3>
+              <div class="panel-controls" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <input type="text" id="admin-billing-search-input" class="input-ctrl" placeholder="Search student or Bill ID..." style="max-width: 200px; height: 32px; font-size: 0.8rem;">
+                
+                <select id="admin-billing-grade-filter" class="input-ctrl" style="max-width: 140px; height: 32px; font-size: 0.8rem; padding: 2px 8px;">
+                  <option value="ALL">ALL Grades</option>
+                  <option value="KG">KG (LKG/UKG)</option>
+                  <option value="Grade 1 & 2">Grade 1 & 2</option>
+                  <option value="Grade 3 to 5">Grade 3 to 5</option>
+                  <option value="Grade 6 to 8">Grade 6 to 8</option>
+                  <option value="Grade 9 to 12">Grade 9 to 12</option>
+                </select>
+
+                <select id="admin-billing-status-filter" class="input-ctrl" style="max-width: 120px; height: 32px; font-size: 0.8rem; padding: 2px 8px;">
+                  <option value="ALL">ALL Status</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                </select>
+
+                <button class="btn btn-outline btn-sm" id="btn-admin-export-billing-csv" style="height: 32px;">
+                  📥 Export CSV
+                </button>
+                <button class="btn btn-danger btn-sm" id="btn-delete-all-bills" style="height: 32px;">
+                  🗑️ Delete All Bills
+                </button>
+              </div>
+            </div>
+            
+            <div class="table-responsive" style="margin-top: 16px;">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Bill ID</th>
+                    <th>Branch</th>
+                    <th>Student Name</th>
+                    <th>Grade / Class</th>
+                    <th>Gender</th>
+                    <th>Amount</th>
+                    <th>Date Created</th>
+                    <th>Cashier</th>
+                    <th>Status</th>
+                    <th style="width: 100px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-billing-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW D: PORTAL SETTINGS -->
+        <!-- ======================================================== -->
+        <section id="view-settings" class="view-section">
+          
+          <div class="glass-panel" style="max-width: 520px;">
+            <div class="panel-header">
+              <h3>🔐 Change Management Password</h3>
+            </div>
+            
+            <form id="change-password-form" style="margin-top: 16px;">
+              <div class="form-group">
+                <label for="change-old-password">Current Password</label>
+                <input type="password" id="change-old-password" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-new-password">New Password</label>
+                <input type="password" id="change-new-password" class="input-ctrl" placeholder="••••••••" required>
+                <small style="color: var(--text-muted);">Must be at least 4 characters long.</small>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-new-password-confirm">Confirm New Password</label>
+                <input type="password" id="change-new-password-confirm" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="margin-top: 12px;">
+                Update Password 🔑
+              </button>
+            </form>
+          </div>
+
+          <div class="glass-panel" style="max-width: 520px; margin-top: 24px;">
+            <div class="panel-header">
+              <h3>🔑 Change Cashier Password</h3>
+            </div>
+            
+            <form id="change-cashier-password-form" style="margin-top: 16px;">
+              <div class="form-group">
+                <label for="change-cashier-old-password">Current Cashier Password</label>
+                <input type="password" id="change-cashier-old-password" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-cashier-new-password">New Cashier Password</label>
+                <input type="password" id="change-cashier-new-password" class="input-ctrl" placeholder="••••••••" required>
+                <small style="color: var(--text-muted);">Must be at least 4 characters long.</small>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-cashier-new-password-confirm">Confirm New Cashier Password</label>
+                <input type="password" id="change-cashier-new-password-confirm" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="margin-top: 12px;">
+                Update Cashier Password 🔑
+              </button>
+            </form>
+          </div>
+
+          <div class="glass-panel" style="max-width: 520px; margin-top: 24px;">
+            <div class="panel-header">
+              <h3>🔑 Change Staff Password</h3>
+            </div>
+            
+            <form id="change-staff-password-form" style="margin-top: 16px;">
+              <div class="form-group">
+                <label for="change-staff-old-password">Current Staff Password</label>
+                <input type="password" id="change-staff-old-password" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-staff-new-password">New Staff Password</label>
+                <input type="password" id="change-staff-new-password" class="input-ctrl" placeholder="••••••••" required>
+                <small style="color: var(--text-muted);">Must be at least 4 characters long.</small>
+              </div>
+              
+              <div class="form-group">
+                <label for="change-staff-new-password-confirm">Confirm New Staff Password</label>
+                <input type="password" id="change-staff-new-password-confirm" class="input-ctrl" placeholder="••••••••" required>
+              </div>
+              
+              <button type="submit" class="btn btn-primary" style="margin-top: 12px;">
+                Update Staff Password 🔑
+              </button>
+            </form>
+          </div>
+
+          <div class="glass-panel" style="max-width: 520px; margin-top: 24px;">
+            <div class="panel-header">
+              <h3>📊 Database Export Utilities</h3>
+            </div>
+            <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+              <p style="color: var(--text-secondary); font-size: 0.9rem;">Download database records in spreadsheet-friendly CSV formats:</p>
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button id="btn-export-students-csv" class="btn btn-outline btn-sm" style="flex: 1; min-width: 160px; height: 38px;">👥 Export Students CSV</button>
+                <button id="btn-export-billing-archive-csv" class="btn btn-outline btn-sm" style="flex: 1; min-width: 160px; height: 38px;">💰 Export Billing CSV</button>
+                <button id="btn-export-transactions-csv" class="btn btn-outline btn-sm" style="flex: 1; min-width: 160px; height: 38px;">📜 Export Logs CSV</button>
+              </div>
+            </div>
+          </div>
+          
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 3. DIALOG / MODAL WIDGET LAYER -->
+  <!-- ======================================================== -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">Dialog Title</h3>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- JS Injectable Form content -->
+      </div>
+      <div class="modal-footer">
+        <!-- Action Buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Deck -->
+  <div id="toast-container" class="toast-container"></div>
+
+</body>
+</html>

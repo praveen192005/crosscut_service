@@ -1,0 +1,18 @@
+{
+  "name": "cross-cut-stock-management",
+  "version": "1.0.0",
+  "description": "Stock Management System with Express and MongoDB Backend",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && npm run dev",
+    "backend": "cd backend && npm run dev",
+    "seed": "cd backend && node -e \"require('./controllers/seedController').seedDatabase({}, { status: () => ({ json: console.log }) })\""
+  },
+  "keywords": [
+    "mongodb",
+    "express",
+    "stock-management"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}

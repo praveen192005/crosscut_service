@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CROSS CUT ENTERPRISES - Uniform Billing Portal (Accounts)</title>
+  <link rel="stylesheet" href="style.css?v=20260804">
+  <style>
+    /* Force override background - remove any cached image background */
+    body, .auth-wrapper {
+      background-image: none !important;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    }
+  </style>
+  
+
+
+  <!-- Application Accounts Controller -->
+  <script type="module" src="accounts.js?v=20260820"></script>
+</head>
+<body>
+
+  <!-- ======================================================== -->
+  <!-- 1. AUTHENTICATION & CASHIER LOGIN SCREEN -->
+  <!-- ======================================================== -->
+  <div id="auth-screen" class="auth-wrapper">
+    <div class="auth-card glass-panel">
+      
+      <!-- System Brand Logo -->
+      <div class="logo-icon auth-logo">💰</div>
+      
+      <div class="auth-header">
+        <h1>CROSS CUT ENTERPRISES</h1>
+        <p>Uniform Billing Portal (Accounts)</p>
+      </div>
+
+      <div>
+        <form id="cashier-login-form" onsubmit="event.preventDefault(); if(window.handleCashierLogin) window.handleCashierLogin(event); return false;">
+          <div class="form-group" style="text-align: left; margin-bottom: 12px;">
+            <label for="auth-cashier-username">Cashier User ID</label>
+            <input type="text" id="auth-cashier-username" class="input-ctrl" 
+                   placeholder="Enter Cashier User ID" required>
+          </div>
+          <div class="form-group" style="text-align: left;">
+            <label for="auth-cashier-password">Cashier Password</label>
+            <input type="password" id="auth-cashier-password" class="input-ctrl" 
+                   placeholder="••••••••" required>
+            <small style="color: var(--text-muted); display: block; margin-top: 6px; font-size: 0.75rem;">
+              Enter the accounts credentials (Default: cashier / cashier123)
+            </small>
+          </div>
+          
+          <button type="button" id="btn-cashier-login-submit" class="btn btn-primary" onclick="if(window.handleCashierLogin) window.handleCashierLogin(event);" style="width: 100%; margin-top: 10px;">
+            Access Billing System 🔓
+          </button>
+        </form>
+      </div>
+
+      <!-- Quick Nav Switches -->
+      <div style="margin-top: 32px; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+        <a href="staff.html" class="btn btn-secondary btn-sm" style="width: 100%; text-decoration: none;">
+          📦 Go to Staff Issuer Portal
+        </a>
+        <a href="index.html" class="btn btn-outline btn-sm" style="width: 100%; text-decoration: none;">
+          🏢 Go to Portal Gateway
+        </a>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- 2. MAIN APP BILLING LAYOUT -->
+  <!-- ======================================================== -->
+  <div id="main-app" class="app-container" style="display: none;">
+    
+    <!-- Left Navigation Sidebar -->
+    <aside class="sidebar">
+      <div class="logo-container">
+        <div class="logo-icon">💰</div>
+        <div class="logo-text">
+          <span class="logo-title">CROSS CUT ENTERPRISES</span>
+          <span class="logo-subtitle">Accounts Portal</span>
+        </div>
+      </div>
+      
+      <nav style="flex-grow: 1;">
+        <ul id="sidebar-nav" class="nav-menu">
+          <li class="nav-item active" data-view="billing">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+              Uniform Billing
+            </a>
+          </li>
+          <li class="nav-item" data-view="transactions">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+              Transactions Log
+            </a>
+          </li>
+        </ul>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="user-avatar">💵</div>
+          <div class="user-info">
+            <span class="user-name">Cashier Desk</span>
+            <span class="user-role">Accounts Dept</span>
+          </div>
+        </div>
+        <!-- Portal Quick Links -->
+        <a href="staff.html" class="btn btn-primary btn-sm" style="width: 100%; text-decoration: none; font-size: 0.8rem; margin-top: 8px; margin-bottom: 2px;">
+          📦 Go to Staff Portal
+        </a>
+        <a href="index.html" class="btn btn-secondary btn-sm" style="width: 100%; text-decoration: none; font-size: 0.8rem; margin-top: 2px; margin-bottom: 2px;">
+          🏢 Go to Portal Gateway
+        </a>
+        <button id="btn-logout" class="btn btn-outline btn-sm" style="width: 100%;">
+          🚪 Lock Portal
+        </button>
+      </div>
+    </aside>
+
+    <!-- Right Content Frame -->
+    <main class="main-content">
+      
+      <!-- Top Sticky Header -->
+      <header class="top-header">
+        <div class="header-title-container">
+          <h2 id="view-title">Uniform Billing</h2>
+        </div>
+        
+        <div class="header-controls">
+          <!-- Active Branch Filter Toggle -->
+          <div class="branch-selector-pill">
+            <button class="branch-pill-btn active" data-branch="ALL">ALL Branches</button>
+            <button class="branch-pill-btn" data-branch="BBLI">BBLI</button>
+            <button class="branch-pill-btn" data-branch="BBCS">BBCS</button>
+            <button class="branch-pill-btn" data-branch="BBMS">BBMS</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Body Scroll frame -->
+      <div class="content-body">
+        
+        <!-- ======================================================== -->
+        <!-- VIEW A: UNIFORM BILLING WORKSPACE -->
+        <!-- ======================================================== -->
+        <section id="view-billing" class="view-section active">
+          
+          <div class="issuer-grid">
+            
+            <!-- Left Side: Directory search listing -->
+            <div class="glass-panel student-list-container">
+              <div class="search-box-wrapper" style="margin-bottom: 12px;">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <input type="text" id="billing-search-input" class="input-ctrl" 
+                       placeholder="Search student by name or grade...">
+              </div>
+
+              <!-- Billing status filter tab pills -->
+              <div style="display: flex; gap: 6px; margin-bottom: 12px; font-size: 0.8rem; overflow-x: auto; padding-bottom: 4px;">
+                <button class="btn btn-sm btn-outline active-status-filter" data-status="ALL" style="padding: 4px 8px; font-size: 0.75rem;">ALL</button>
+                <button class="btn btn-sm btn-outline active-status-filter" data-status="Unbilled" style="padding: 4px 8px; font-size: 0.75rem;">Unbilled</button>
+                <button class="btn btn-sm btn-outline active-status-filter" data-status="Pending" style="padding: 4px 8px; font-size: 0.75rem;">Pending</button>
+                <button class="btn btn-sm btn-outline active-status-filter" data-status="Paid" style="padding: 4px 8px; font-size: 0.75rem;">Paid</button>
+              </div>
+              
+              <div class="student-items-scroll" id="billing-student-scroll">
+                <!-- JS populated student list -->
+              </div>
+            </div>
+
+            <!-- Right Side: Billing control details panel -->
+            <div class="glass-panel" style="min-height: 520px; display: flex; flex-direction: column;">
+              
+              <!-- Empty Selection State -->
+              <div id="billing-detail-empty" class="issuer-detail-panel">
+                <div style="font-size: 3rem; margin-bottom: 16px;">💳</div>
+                <h3>Select Student to Manage Billing</h3>
+                <p style="margin-top: 8px;">Please select a student from the directory listing on the left to review, generate, or settle their uniform billing fees.</p>
+              </div>
+
+              <!-- Active Billing State -->
+              <div id="billing-detail-active" class="issuer-detail-active" style="display: none; flex-grow: 1;">
+                
+                <div class="student-profile-header">
+                  <div class="profile-title">
+                    <h3 id="billing-profile-name">Student Name</h3>
+                    <div class="profile-meta">
+                      <span id="billing-profile-branch">BBLI</span>
+                      <span id="billing-profile-gender">Boys</span>
+                      <span id="billing-profile-grade">Grade 5</span>
+                    </div>
+                  </div>
+                  <span class="badge badge-neutral" style="padding: 6px 12px;" id="billing-profile-status-badge">Unbilled</span>
+                </div>
+
+                <div class="billing-content-panel" style="margin-top: 20px;">
+                  <!-- Dynamic Billing Card depending on status -->
+                  <div id="dynamic-bill-card"></div>
+                </div>
+
+              </div>
+
+            </div>
+
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW B: BILLING TRANSACTIONS LOG -->
+        <!-- ======================================================== -->
+        <section id="view-transactions" class="view-section">
+          
+          <div class="glass-panel">
+            <div class="panel-header">
+              <h3>📜 Accounts Collection Ledger</h3>
+              <div class="panel-controls">
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="ledger-search" class="input-ctrl" placeholder="Search Student Name or Bill ID..." style="max-width: 250px; font-size: 0.8rem; height: 32px;">
+                  <button class="btn btn-outline btn-sm" id="btn-export-ledger-csv">
+                    📥 Export CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div class="table-responsive" style="margin-top: 16px;">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Bill ID</th>
+                    <th>Date & Time</th>
+                    <th>Student Name</th>
+                    <th>Grade / Class</th>
+                    <th>Gender</th>
+                    <th>Amount</th>
+                    <th>Cashier</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="ledger-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Dialog Overlay Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">Dialog Title</h3>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- JS contents -->
+      </div>
+      <div class="modal-footer">
+        <!-- Buttons -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Deck -->
+  <div id="toast-container" class="toast-container"></div>
+
+</body>
+</html>

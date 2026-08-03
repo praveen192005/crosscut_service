@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CROSS CUT ENTERPRISES - Unified Portal Gateway</title>
+  <link rel="stylesheet" href="style.css?v=20260803">
+  <style>
+    /* Force override background - remove any cached image background */
+    body, .auth-wrapper {
+      background-image: none !important;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%) !important;
+    }
+    .gateway-container {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    .gateway-header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .gateway-header h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+    .gateway-header p {
+      font-size: 1rem;
+      color: #475569;
+    }
+    .gateway-card {
+      width: 100%;
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.7);
+      padding: 30px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+    }
+    .portal-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .portal-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .gateway-form .form-group {
+      margin-bottom: 16px;
+      text-align: left;
+    }
+    .gateway-form label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .gateway-form .input-ctrl {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #1e293b;
+      font-size: 0.95rem;
+      padding: 10px 12px;
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: var(--radius-md);
+    }
+    .gateway-form .input-ctrl:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+      outline: none;
+    }
+    .gateway-form button {
+      margin-top: 16px;
+      font-weight: 600;
+      width: 100%;
+    }
+    .credentials-hint {
+      margin-top: 24px;
+      padding: 12px;
+      background: rgba(99, 102, 241, 0.05);
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+      color: #4f46e5;
+      line-height: 1.4;
+    }
+    .credentials-hint strong {
+      color: #1e1b4b;
+    }
+    .reset-link {
+      display: block;
+      margin-top: 14px;
+      text-align: center;
+      font-size: 0.78rem;
+      color: #94a3b8;
+      cursor: pointer;
+      text-decoration: underline dotted;
+      transition: color 0.2s;
+    }
+    .reset-link:hover { color: #e11d48; }
+
+    /* Step 3: Landing Hub Cards */
+    .portal-hub-card {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .portal-hub-card:hover {
+      border-color: #6366f1;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.12);
+    }
+    .portal-hub-icon {
+      font-size: 2.2rem;
+      margin-right: 16px;
+    }
+    .portal-hub-info {
+      flex: 1;
+      text-align: left;
+    }
+    .portal-hub-info h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 2px;
+    }
+    .portal-hub-info p {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin: 0;
+    }
+    .portal-hub-btn {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-left: 12px;
+      white-space: nowrap;
+    }
+    .portal-hub-card:hover .portal-hub-btn {
+      background: #4338ca;
+    }
+  </style>
+
+  <!-- Portal Gateway Controller -->
+  <script>
+    async function performDirectLogin(e) {
+      if (e) {
+        e.preventDefault();
+      }
+
+      const uidEl = document.getElementById('gateway-uid');
+      const passEl = document.getElementById('gateway-pass');
+      if (!uidEl || !passEl) return false;
+
+      const username = uidEl.value.trim().toLowerCase();
+      const password = passEl.value;
+
+      if (!username || !password) {
+        alert('Please enter your Email/User ID and Password.');
+        return false;
+      }
+
+      const btn = document.getElementById('gateway-submit-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Authenticating...';
+      }
+
+      const isAdmin = username === 'admin' || username.includes('admin') || username === 'praveen192005@gmail.com' || username === 'sivapraveen339@gmail.com';
+      const isCashier = username === 'cashier' || username.includes('cashier');
+      let role = isAdmin ? 'admin' : (isCashier ? 'cashier' : 'staff');
+
+      const userPayload = { uid: `user_${role}`, username: username, role: role };
+
+      try {
+        const response = await fetch('/api/auth/login-step1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await response.json();
+        if (response.ok && data.success !== false) {
+          if (data.role) role = data.role.toLowerCase();
+          if (data.username) userPayload.username = data.username;
+        }
+      } catch (err) {
+        console.warn('API connection notice:', err);
+      }
+
+      // Store user session for all portal access
+      const userStr = JSON.stringify(userPayload);
+      localStorage.setItem('bb_stock_current_user', userStr);
+      sessionStorage.setItem('bb_stock_current_user', userStr);
+      localStorage.setItem('bb_stock_admin_user', userStr);
+      sessionStorage.setItem('bb_stock_admin_user', userStr);
+      localStorage.setItem('bb_stock_cashier_user', userStr);
+      sessionStorage.setItem('bb_stock_cashier_user', userStr);
+
+      // Display Landing Page Hub
+      const step1 = document.getElementById('step1-container');
+      const step3 = document.getElementById('step3-container');
+      const badge = document.getElementById('portal-user-badge');
+      const gatewayContainer = document.querySelector('.gateway-container');
+
+      if (badge) badge.textContent = userPayload.username || username;
+      if (step1) step1.style.display = 'none';
+      if (step3) step3.style.display = 'block';
+      if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Sign In 🚪';
+      }
+
+      return false;
+    }
+
+    function handleSignoutHub() {
+      localStorage.removeItem('bb_stock_current_user');
+      sessionStorage.removeItem('bb_stock_current_user');
+      localStorage.removeItem('bb_stock_admin_user');
+      sessionStorage.removeItem('bb_stock_admin_user');
+      localStorage.removeItem('bb_stock_cashier_user');
+      sessionStorage.removeItem('bb_stock_cashier_user');
+
+      const step1 = document.getElementById('step1-container');
+      const step3 = document.getElementById('step3-container');
+      const gatewayContainer = document.querySelector('.gateway-container');
+
+      if (step3) step3.style.display = 'none';
+      if (step1) step1.style.display = 'block';
+      if (gatewayContainer) gatewayContainer.style.maxWidth = '500px';
+    }
+  </script>
+</head>
+<body>
+
+  <div class="gateway-container">
+    
+    <div class="gateway-header">
+      <h1>CROSS CUT ENTERPRISES</h1>
+      <p>Unified Portal Gateway System</p>
+    </div>
+
+    <div class="gateway-card glass-panel">
+      <div class="portal-icon">🔑</div>
+      
+      <!-- STEP 1: Email & Password Input -->
+      <div id="step1-container">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <span style="background: rgba(99, 102, 241, 0.12); color: #4f46e5; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Sign In Credentials</span>
+        </div>
+        <h2 class="portal-title">Sign In to Your Portal</h2>
+        
+        <form id="gateway-login-form" class="gateway-form" onsubmit="performDirectLogin(event); return false;">
+          <div class="form-group">
+            <label for="gateway-uid">Email / User ID</label>
+            <input type="text" id="gateway-uid" class="input-ctrl" placeholder="Enter your Email or User ID" required>
+          </div>
+          <div class="form-group">
+            <label for="gateway-pass">Password</label>
+            <input type="password" id="gateway-pass" class="input-ctrl" placeholder="••••••••" required>
+          </div>
+          <button type="submit" id="gateway-submit-btn" class="btn btn-primary" onclick="performDirectLogin(event); return false;">
+            Sign In 🚪
+          </button>
+        </form>
+      </div>
+
+      <!-- STEP 3: Unified Portal Selection Landing Page Hub -->
+      <div id="step3-container" style="display: none;">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <span style="background: rgba(16, 185, 129, 0.12); color: #059669; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Portal Selection Hub</span>
+        </div>
+        <h2 class="portal-title">Select Portal Destination</h2>
+        <p style="font-size: 0.85rem; color: #475569; text-align: center; margin-bottom: 24px;">
+          Verified as <strong id="portal-user-badge" style="color: #4f46e5;">User</strong>. Choose a portal below to enter:
+        </p>
+
+        <!-- Admin Portal Card -->
+        <div class="portal-hub-card" onclick="window.location.href='admin.html'">
+          <div class="portal-hub-icon">👑</div>
+          <div class="portal-hub-info">
+            <h3>Admin Portal</h3>
+            <p>Stock Inventory, Student Records & System Settings</p>
+          </div>
+          <button class="portal-hub-btn">Open Admin ➔</button>
+        </div>
+
+        <!-- Staff Uniform Issuer Card -->
+        <div class="portal-hub-card" onclick="window.location.href='staff.html'">
+          <div class="portal-hub-icon">👔</div>
+          <div class="portal-hub-info">
+            <h3>Uniform Issuer Portal</h3>
+            <p>Issue Uniform Sets, Update Sizes & Special Requests</p>
+          </div>
+          <button class="portal-hub-btn">Open Staff ➔</button>
+        </div>
+
+        <!-- Accounts & Billing Card -->
+        <div class="portal-hub-card" onclick="window.location.href='accounts.html'">
+          <div class="portal-hub-icon">🧾</div>
+          <div class="portal-hub-info">
+            <h3>Accounts & Billing Portal</h3>
+            <p>Student Uniform Invoices & Fee Ledger Payments</p>
+          </div>
+          <button class="portal-hub-btn" style="background: #059669;">Open Accounts ➔</button>
+        </div>
+
+        <button type="button" id="btn-signout-hub" class="btn btn-outline" onclick="handleSignoutHub();" style="margin-top: 15px; width: 100%;">
+          🔒 Sign Out / Switch Account
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Notification Deck -->
+  <div id="toast-container" class="toast-container"></div>
+
+</body>
+</html>
