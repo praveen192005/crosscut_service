@@ -132,6 +132,7 @@ class MockDB {
   async logout() {
     localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_staff_auth');
   }
 
   async loginAdmin(username, password) {
@@ -154,6 +155,7 @@ class MockDB {
   async logoutAdmin() {
     sessionStorage.removeItem(ADMIN_USER_KEY);
     localStorage.removeItem(ADMIN_USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_admin_auth');
   }
 
   async changeAdminPassword(oldPassword, newPassword) {
@@ -265,6 +267,7 @@ class MockDB {
   async logoutCashier() {
     sessionStorage.removeItem(CASHIER_USER_KEY);
     localStorage.removeItem(CASHIER_USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
   }
 
   async changeCashierPassword(oldPassword, newPassword) {
@@ -726,18 +729,21 @@ class MongoApiDB {
   async logout() {
     localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_staff_auth');
     return true;
   }
 
   async logoutAdmin() {
     localStorage.removeItem(ADMIN_USER_KEY);
     sessionStorage.removeItem(ADMIN_USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_admin_auth');
     return true;
   }
 
   async logoutCashier() {
     localStorage.removeItem(CASHIER_USER_KEY);
     sessionStorage.removeItem(CASHIER_USER_KEY);
+    sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
     return true;
   }
 

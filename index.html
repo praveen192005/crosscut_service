@@ -220,19 +220,10 @@
         console.warn('API connection notice:', err);
       }
 
-      // Store user session for all portal access
+      // Store user session for portal gateway identity
       const userStr = JSON.stringify(userPayload);
       localStorage.setItem('bb_stock_current_user', userStr);
       sessionStorage.setItem('bb_stock_current_user', userStr);
-      localStorage.setItem('bb_stock_admin_user', userStr);
-      sessionStorage.setItem('bb_stock_admin_user', userStr);
-      localStorage.setItem('bb_stock_cashier_user', userStr);
-      sessionStorage.setItem('bb_stock_cashier_user', userStr);
-
-      // Set explicit auth flags for seamless portal entry
-      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
-      sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
 
       // Display Landing Page Hub
       const step1 = document.getElementById('step1-container');
@@ -320,7 +311,7 @@
         </p>
 
         <!-- Admin Portal Card -->
-        <div class="portal-hub-card" onclick="sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true'); window.location.href='admin.html'">
+        <div class="portal-hub-card" onclick="window.location.href='admin.html'">
           <div class="portal-hub-icon">👑</div>
           <div class="portal-hub-info">
             <h3>Admin Portal</h3>
@@ -330,7 +321,7 @@
         </div>
 
         <!-- Staff Uniform Issuer Card -->
-        <div class="portal-hub-card" onclick="sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true'); window.location.href='staff.html'">
+        <div class="portal-hub-card" onclick="window.location.href='staff.html'">
           <div class="portal-hub-icon">👔</div>
           <div class="portal-hub-info">
             <h3>Uniform Issuer Portal</h3>
@@ -340,7 +331,7 @@
         </div>
 
         <!-- Accounts & Billing Card -->
-        <div class="portal-hub-card" onclick="sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true'); window.location.href='accounts.html'">
+        <div class="portal-hub-card" onclick="window.location.href='accounts.html'">
           <div class="portal-hub-icon">🧾</div>
           <div class="portal-hub-info">
             <h3>Accounts & Billing Portal</h3>
