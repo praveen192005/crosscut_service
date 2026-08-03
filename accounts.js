@@ -174,6 +174,13 @@ window.handleCashierLogin = async function(e) {
   const username = userEl ? userEl.value.trim() : 'cashier';
   const password = passEl ? passEl.value : 'cashier123';
 
+  const submitBtn = document.getElementById('btn-cashier-login-submit') || (e && e.target && e.target.querySelector ? e.target.querySelector('button') : null);
+  const originalText = submitBtn ? submitBtn.innerHTML : 'Access Billing System 🔓';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Authenticating...';
+  }
+
   try {
     const user = await db.loginCashier(username || 'cashier', password || 'cashier123');
     state.currentUser = user || { uid: 'cashier_user', username: username || 'cashier', role: 'cashier' };
@@ -187,6 +194,11 @@ window.handleCashierLogin = async function(e) {
     await checkAuth();
   } catch (error) {
     showToast(error.message || 'Authentication failed. Check credentials.', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
   }
   return false;
 };
