@@ -98,17 +98,17 @@ class MockDB {
   }
 
   getCurrentUser() {
-    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY) || localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   getCurrentAdmin() {
-    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY) || localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
     return admin ? JSON.parse(admin) : null;
   }
 
   getCurrentCashier() {
-    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY) || localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
+    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
     return cashier ? JSON.parse(cashier) : null;
   }
 
@@ -664,17 +664,17 @@ class MongoApiDB {
   }
 
   getCurrentUser() {
-    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY) || localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   getCurrentAdmin() {
-    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY) || localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
     return admin ? JSON.parse(admin) : null;
   }
 
   getCurrentCashier() {
-    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY) || localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY) || localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
+    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
     return cashier ? JSON.parse(cashier) : null;
   }
 

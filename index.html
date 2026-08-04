@@ -216,15 +216,6 @@
         const role = (res.role || 'staff').toLowerCase();
         const userPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
 
-        // Set explicit role authentication flag
-        if (role === 'admin') {
-          sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-        } else if (role === 'cashier') {
-          sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
-        } else {
-          sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
-        }
-
         // Store user session for portal gateway identity
         const userStr = JSON.stringify(userPayload);
         localStorage.setItem('bb_stock_current_user', userStr);
