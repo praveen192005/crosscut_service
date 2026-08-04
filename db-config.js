@@ -1017,3 +1017,9 @@ export const isFirebaseMode = false;
 export const db = new MongoApiDB();
 export const mockAdminPassKey = MOCK_ADMIN_PASS_KEY;
 
+if (typeof window !== 'undefined') {
+  window.db = db;
+  window.isFirebaseMode = isFirebaseMode;
+}
+
+

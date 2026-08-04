@@ -170,11 +170,10 @@
     .portal-hub-card:hover .portal-hub-btn {
       background: #4338ca;
     }
-  </style>
+  <script type="module">
+    import { db } from './db-config.js?v=20260804';
+    window.db = db;
 
-  <script src="db-config.js?v=20260804"></script>
-  <!-- Portal Gateway Controller -->
-  <script>
     async function performDirectLogin(e) {
       if (e) {
         e.preventDefault();
@@ -199,52 +198,21 @@
       }
 
       try {
-        let authSuccess = false;
-        let userPayload = null;
-        let role = 'staff';
-
-        // 1. Try Backend API first if available
-        try {
-          const response = await fetch('/api/auth/login-step1', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            if (data.success !== false) {
-              authSuccess = true;
-              role = (data.role || 'staff').toLowerCase();
-              userPayload = data.data || { uid: `user_${role}`, username: data.username || username, role: role };
-            } else {
-              throw new Error(data.message || 'Invalid Email/User ID or Password.');
-            }
-          } else {
-            const errData = await response.json().catch(() => ({}));
-            throw new Error(errData.message || 'Invalid Email/User ID or Password.');
-          }
-        } catch (apiErr) {
-          // Pass credential failure messages through
-          if (apiErr.message.includes('Invalid') || apiErr.message.includes('Incorrect') || apiErr.message.includes('credentials')) {
-            throw apiErr;
-          }
-          // Fallback to local DB validation if backend server is offline or static client
-          if (window.db && typeof window.db.loginStep1 === 'function') {
-            const dbResult = await window.db.loginStep1(username, password);
-            if (dbResult && dbResult.success !== false) {
-              authSuccess = true;
-              role = (dbResult.role || 'staff').toLowerCase();
-              userPayload = dbResult.data || { uid: `user_${role}`, username: dbResult.username || username, role: role };
-            }
-          } else {
-            throw apiErr;
-          }
+        if (!window.db) {
+          await new Promise(r => setTimeout(r, 120));
         }
 
-        if (!authSuccess || !userPayload) {
-          throw new Error('Authentication failed. Invalid Email/User ID or Password.');
+        if (!window.db || typeof window.db.loginStep1 !== 'function') {
+          throw new Error('Database service is initializing. Please try again in a second.');
         }
+
+        const res = await window.db.loginStep1(username, password);
+        if (!res || res.success === false) {
+          throw new Error(res ? res.message : 'Invalid Email/User ID or Password.');
+        }
+
+        const role = (res.role || 'staff').toLowerCase();
+        const userPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
 
         // Set explicit role authentication flag
         if (role === 'admin') {
@@ -303,6 +271,9 @@
       if (step1) step1.style.display = 'block';
       if (gatewayContainer) gatewayContainer.style.maxWidth = '500px';
     }
+
+    window.performDirectLogin = performDirectLogin;
+    window.handleSignoutHub = handleSignoutHub;
   </script>
 </head>
 <body>
