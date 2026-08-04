@@ -1,5 +1,5 @@
 // accounts.js
-import { db } from './db-config.js?v=20260805_sec';
+import { db } from './db-config.js?v=20260805_auth';
 
 // Global Cashier Application State
 const state = {

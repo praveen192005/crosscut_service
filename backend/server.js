@@ -72,7 +72,8 @@ app.get('/api/health', (req, res) => {
 // Serve static frontend files (index.html, admin.html, accounts.html, staff.html, style.css, app.js, etc.)
 app.use(express.static(path.join(__dirname, '..'), {
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.html')) {
+    if (filePath.endsWith('.html') || filePath.endsWith('.js') || filePath.endsWith('.css')) {
+      // Prevent browsers from caching JS/CSS/HTML — critical for auth security fixes to take effect immediately
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');

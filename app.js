@@ -1,5 +1,5 @@
 // app.js
-import { db } from './db-config.js?v=20260805_sec';
+import { db } from './db-config.js?v=20260805_auth';
 
 // Detect Portal Mode (Robust support for clean URLs e.g. /admin and /admin.html)
 const isAdminPage = window.location.pathname.includes('admin') || document.getElementById('admin-login-form') !== null;

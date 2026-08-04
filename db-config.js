@@ -11,29 +11,21 @@ const MOCK_ADMIN_PASS_KEY = 'bb_stock_mock_admin_pass';
 const MOCK_CASHIER_PASS_KEY = 'bb_stock_mock_cashier_pass';
 
 // ============================================================
-// SECURITY MIGRATION: Remove stale auth sessions from localStorage
-// Old code versions wrote session tokens to localStorage (persistent),
-// which caused pages to bypass the login screen on reload.
-// New code uses sessionStorage ONLY for auth tokens.
-// This migration runs on every page load via db-config.js import.
+// SECURITY: Always remove auth session tokens from localStorage on every
+// page load. Auth sessions are stored in sessionStorage ONLY.
+// localStorage auth tokens from old code versions caused pages to bypass
+// the login screen. This block runs every time db-config.js is imported
+// (i.e., on every page load across all portals).
 // ============================================================
-(function clearStaleLocalStorageAuthSessions() {
-  const MIGRATION_KEY = 'bb_auth_session_migrated_v3';
-  if (!localStorage.getItem(MIGRATION_KEY)) {
-    localStorage.removeItem(USER_KEY);        // bb_stock_current_user
-    localStorage.removeItem(ADMIN_USER_KEY);  // bb_stock_admin_user
-    localStorage.removeItem(CASHIER_USER_KEY); // bb_stock_cashier_user
-    localStorage.setItem(MIGRATION_KEY, '1');
-    // Also clear any lingering sessionStorage explicit auth flags to force re-login
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem('bb_stock_explicit_admin_auth');
-      sessionStorage.removeItem('bb_stock_explicit_staff_auth');
-      sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
-      sessionStorage.removeItem(USER_KEY);
-      sessionStorage.removeItem(ADMIN_USER_KEY);
-      sessionStorage.removeItem(CASHIER_USER_KEY);
-    }
-  }
+(function enforceSessionStorageOnlyAuth() {
+  // Always remove any auth session tokens from localStorage
+  // (these should NEVER be in localStorage — sessions use sessionStorage only)
+  localStorage.removeItem('bb_stock_current_user');
+  localStorage.removeItem('bb_stock_admin_user');
+  localStorage.removeItem('bb_stock_cashier_user');
+  // Clean up old migration marker keys (no longer needed)
+  localStorage.removeItem('bb_auth_migrated_v2');
+  localStorage.removeItem('bb_auth_session_migrated_v3');
 })();
 
 // Helper to normalize student uniform sets for backward compatibility
