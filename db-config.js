@@ -233,18 +233,9 @@ class MockDB {
     }
 
     const user = { uid: `mock_${role}_uid`, username: uname, role: role };
-    // Write only to the role-specific key in sessionStorage (no cross-writes)
-    if (role === 'admin') {
-      sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-    } else if (role === 'cashier') {
-      sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
-    } else {
-      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
-    }
-
+    // NOTE: loginStep1 is ONLY for gateway credential verification and routing.
+    // It does NOT set explicit portal auth flags.
+    // Each portal (admin.html, staff.html, accounts.html) requires its OWN login.
     this.mockPendingUser = user;
     return {
       success: true,
@@ -770,17 +761,9 @@ class MongoApiDB {
       });
       const userPayload = data.data || { uid: 'user_uid', username, role: data.role || 'staff' };
       const role = (data.role || userPayload.role || 'staff').toLowerCase();
-      // Write only to role-specific key in sessionStorage — no cross-writes
-      if (role === 'admin') {
-        sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-      } else if (role === 'cashier') {
-        sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
-      } else {
-        sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
-      }
+      // NOTE: loginStep1 is ONLY for gateway credential verification and routing.
+      // It does NOT set explicit portal auth flags.
+      // Each portal (admin.html, staff.html, accounts.html) requires its OWN login.
       return { ...data, role };
     } catch (err) {
       return this.fallbackMock.loginStep1(username, password);

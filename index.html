@@ -173,7 +173,7 @@
   </style>
 
   <script type="module">
-    import { db } from './db-config.js?v=20260805_auth';
+    import { db } from './db-config.js?v=20260805_final';
     window.db = db;
 
     // One-time migration: clear stale auth data from localStorage (old code wrote here, new code uses sessionStorage only)
@@ -227,9 +227,8 @@
         const role = (res.role || 'staff').toLowerCase();
         const userPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
 
-        // Store user session for portal gateway identity
+        // Store user session for portal gateway identity only (NOT for portal auth)
         const userStr = JSON.stringify(userPayload);
-        localStorage.setItem('bb_stock_current_user', userStr);
         sessionStorage.setItem('bb_stock_current_user', userStr);
 
         // Display Landing Page Hub (Step 3)
