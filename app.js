@@ -1848,6 +1848,71 @@ async function submitAddStock() {
   }
 }
 
+// Global Print / PDF Export Utility (Pop-up & Hosted Online Fallback Driver)
+function safeTriggerPrint(htmlString) {
+  let printWindow = null;
+  try {
+    printWindow = window.open('', '_blank');
+  } catch (err) {
+    printWindow = null;
+  }
+
+  if (printWindow && !printWindow.closed) {
+    try {
+      printWindow.document.open();
+      printWindow.document.write(htmlString);
+      printWindow.document.close();
+      
+      setTimeout(() => {
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch (e) {
+          console.warn('Hosted direct print popup notice:', e);
+          triggerIframeFallbackPrint(htmlString);
+        }
+      }, 350);
+      return;
+    } catch (e) {
+      console.warn('Document write exception on pop-up window:', e);
+    }
+  }
+
+  // Fallback: If pop-ups are blocked by hosted browser settings, use a hidden iframe
+  triggerIframeFallbackPrint(htmlString);
+}
+
+function triggerIframeFallbackPrint(htmlString) {
+  let iframe = document.getElementById('app-global-print-iframe');
+  if (!iframe) {
+    iframe = document.createElement('iframe');
+    iframe.id = 'app-global-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0px';
+    iframe.style.height = '0px';
+    iframe.style.border = '0px';
+    iframe.style.zIndex = '-9999';
+    document.body.appendChild(iframe);
+  }
+
+  const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+  if (doc) {
+    doc.open();
+    doc.write(htmlString);
+    doc.close();
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (err) {
+        alert('Printing failed. Please enable pop-ups in your browser settings for PDF export.');
+      }
+    }, 350);
+  }
+}
+
 // PDF Export implementation
 function exportStocksToPDF() {
   const filterBranch = state.activeBranch;
@@ -1887,8 +1952,8 @@ function exportStocksToPDF() {
     `;
   }).join('');
 
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
+  const htmlContent = `
+    <!DOCTYPE html>
     <html>
     <head>
       <title>CROSS CUT ENTERPRISES - Uniform Stock Report</title>
@@ -2010,14 +2075,24 @@ function exportStocksToPDF() {
       </div>
 
       <script>
-        window.onload = function() {
-          window.print();
+        function autoPrint() {
+          try {
+            window.focus();
+            window.print();
+          } catch(e) {}
+        }
+        if (document.readyState === 'complete') {
+          setTimeout(autoPrint, 200);
+        } else {
+          window.addEventListener('DOMContentLoaded', autoPrint);
+          window.addEventListener('load', autoPrint);
         }
       </script>
     </body>
     </html>
-  `);
-  printWindow.document.close();
+  `;
+
+  safeTriggerPrint(htmlContent);
 }
 
 // ----------------------------------------------------
@@ -2352,8 +2427,8 @@ function showReceiptModal(student, setNumber, status, topSize, bottomSize, sport
   `, [
     { text: 'Close', type: 'secondary', handler: closeModal },
     { text: '🖨️ Print Slip', type: 'primary', handler: () => {
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(`
+        const htmlSlip = `
+          <!DOCTYPE html>
           <html>
             <head>
               <title>Print Uniform Receipt - ${student.name}</title>
@@ -2367,15 +2442,23 @@ function showReceiptModal(student, setNumber, status, topSize, bottomSize, sport
             <body>
               ${printContent}
               <script>
-                window.onload = function() {
-                  window.print();
-                  setTimeout(() => window.close(), 500);
+                function autoPrint() {
+                  try {
+                    window.focus();
+                    window.print();
+                  } catch(e) {}
+                }
+                if (document.readyState === 'complete') {
+                  setTimeout(autoPrint, 200);
+                } else {
+                  window.addEventListener('DOMContentLoaded', autoPrint);
+                  window.addEventListener('load', autoPrint);
                 }
               </script>
             </body>
           </html>
-        `);
-        printWindow.document.close();
+        `;
+        safeTriggerPrint(htmlSlip);
       }
     }
   ]);

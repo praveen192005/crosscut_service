@@ -116,8 +116,8 @@ class MockDB {
     const storedPass = localStorage.getItem('bb_stock_mock_staff_pass') || 'staff123';
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-    const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || uname.includes('@') || uname === 'accounts' || uname === 'admin';
-    const isValidPass = (password === storedPass || password === 'staff123' || password === 'password' || password === '123456' || isMasterPass || Boolean(password));
+    const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || uname === 'accounts' || uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
+    const isValidPass = (password === storedPass || password === 'staff123' || isMasterPass);
     if (isStaffUser && isValidPass) {
       const staffUser = { uid: 'mock_staff_uid', username: username || 'staff', role: 'staff' };
       localStorage.setItem(USER_KEY, JSON.stringify(staffUser));
@@ -139,8 +139,8 @@ class MockDB {
     const storedPass = localStorage.getItem(MOCK_ADMIN_PASS_KEY) || 'admin123';
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com' || uname === 'accounts' || uname === 'staffs';
-    const isValidPass = (password === storedPass || password === 'admin123' || password === 'password123' || isMasterPass || Boolean(password));
+    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
+    const isValidPass = (password === storedPass || password === 'admin123' || isMasterPass);
     if (isAdminUser && isValidPass) {
       const adminUser = { uid: 'mock_admin_uid', username: username || 'management_admin', role: 'admin' };
       localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
@@ -183,7 +183,7 @@ class MockDB {
   }
 
   async loginStep1(username, password) {
-    const uname = (username || '').toLowerCase();
+    const uname = (username || '').toLowerCase().trim();
     let valid = false;
     let role = 'staff';
 
@@ -195,9 +195,9 @@ class MockDB {
     } else if (uname === 'cashier') {
       const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
       if (password === storedPass || isMasterPass) { valid = true; role = 'cashier'; }
-    } else {
+    } else if (uname === 'staff' || uname === 'staffs') {
       const storedPass = localStorage.getItem('bb_stock_mock_staff_pass') || 'staff123';
-      if (password === storedPass || isMasterPass || uname.includes('@')) { valid = true; role = 'staff'; }
+      if (password === storedPass || isMasterPass) { valid = true; role = 'staff'; }
     }
 
     if (!valid) {
@@ -251,8 +251,8 @@ class MockDB {
     const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-    const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account') || uname === 'admin' || uname === 'staffs';
-    const isValidPass = (password === storedPass || password === 'cashier123' || password === 'password123' || isMasterPass || Boolean(password));
+    const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account');
+    const isValidPass = (password === storedPass || password === 'cashier123' || isMasterPass);
     if (isCashierUser && isValidPass) {
       const cashierUser = { uid: 'mock_cashier_uid', username: username || 'accounts_cashier', role: 'cashier' };
       localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));

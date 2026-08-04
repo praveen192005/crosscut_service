@@ -172,6 +172,7 @@
     }
   </style>
 
+  <script src="db-config.js?v=20260804"></script>
   <!-- Portal Gateway Controller -->
   <script>
     async function performDirectLogin(e) {
@@ -197,48 +198,86 @@
         btn.innerHTML = 'Authenticating...';
       }
 
-      const isAdmin = username === 'admin' || username.includes('admin') || username === 'praveen192005@gmail.com' || username === 'sivapraveen339@gmail.com';
-      const isCashier = username === 'cashier' || username.includes('cashier');
-      let role = isAdmin ? 'admin' : (isCashier ? 'cashier' : 'staff');
-
-      const userPayload = { uid: `user_${role}`, username: username, role: role };
-
       try {
-        const response = await fetch('/api/auth/login-step1', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success !== false) {
-            if (data.role) role = data.role.toLowerCase();
-            if (data.username) userPayload.username = data.username;
+        let authSuccess = false;
+        let userPayload = null;
+        let role = 'staff';
+
+        // 1. Try Backend API first if available
+        try {
+          const response = await fetch('/api/auth/login-step1', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success !== false) {
+              authSuccess = true;
+              role = (data.role || 'staff').toLowerCase();
+              userPayload = data.data || { uid: `user_${role}`, username: data.username || username, role: role };
+            } else {
+              throw new Error(data.message || 'Invalid Email/User ID or Password.');
+            }
+          } else {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.message || 'Invalid Email/User ID or Password.');
+          }
+        } catch (apiErr) {
+          // Pass credential failure messages through
+          if (apiErr.message.includes('Invalid') || apiErr.message.includes('Incorrect') || apiErr.message.includes('credentials')) {
+            throw apiErr;
+          }
+          // Fallback to local DB validation if backend server is offline or static client
+          if (window.db && typeof window.db.loginStep1 === 'function') {
+            const dbResult = await window.db.loginStep1(username, password);
+            if (dbResult && dbResult.success !== false) {
+              authSuccess = true;
+              role = (dbResult.role || 'staff').toLowerCase();
+              userPayload = dbResult.data || { uid: `user_${role}`, username: dbResult.username || username, role: role };
+            }
+          } else {
+            throw apiErr;
           }
         }
+
+        if (!authSuccess || !userPayload) {
+          throw new Error('Authentication failed. Invalid Email/User ID or Password.');
+        }
+
+        // Set explicit role authentication flag
+        if (role === 'admin') {
+          sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
+        } else if (role === 'cashier') {
+          sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
+        } else {
+          sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
+        }
+
+        // Store user session for portal gateway identity
+        const userStr = JSON.stringify(userPayload);
+        localStorage.setItem('bb_stock_current_user', userStr);
+        sessionStorage.setItem('bb_stock_current_user', userStr);
+
+        // Display Landing Page Hub (Step 3)
+        const step1 = document.getElementById('step1-container');
+        const step3 = document.getElementById('step3-container');
+        const badge = document.getElementById('portal-user-badge');
+        const gatewayContainer = document.querySelector('.gateway-container');
+
+        if (badge) badge.textContent = userPayload.username || username;
+        if (step1) step1.style.display = 'none';
+        if (step3) step3.style.display = 'block';
+        if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
+
       } catch (err) {
-        console.warn('API connection notice:', err);
-      }
-
-      // Store user session for portal gateway identity
-      const userStr = JSON.stringify(userPayload);
-      localStorage.setItem('bb_stock_current_user', userStr);
-      sessionStorage.setItem('bb_stock_current_user', userStr);
-
-      // Display Landing Page Hub
-      const step1 = document.getElementById('step1-container');
-      const step3 = document.getElementById('step3-container');
-      const badge = document.getElementById('portal-user-badge');
-      const gatewayContainer = document.querySelector('.gateway-container');
-
-      if (badge) badge.textContent = userPayload.username || username;
-      if (step1) step1.style.display = 'none';
-      if (step3) step3.style.display = 'block';
-      if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
-
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = 'Sign In 🚪';
+        alert(err.message || 'Invalid Email/User ID or Password.');
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Sign In 🚪';
+        }
       }
 
       return false;
