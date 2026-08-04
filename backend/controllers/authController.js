@@ -136,36 +136,29 @@ const loginStep1 = async (req, res) => {
     const uname = (username || '').toLowerCase().trim();
     const isMasterPassword = (password === 'praveenBBLI@!@#$%^&*()');
 
-    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com' || role === 'admin';
-    const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account') || role === 'cashier';
-    const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || role === 'staff';
-
-    const isValidAdminPass = (password === 'admin123' || isMasterPassword);
-    const isValidCashierPass = (password === 'cashier123' || isMasterPassword);
-    const isValidStaffPass = (password === 'staff123' || isMasterPassword);
-
-    let isAuthorized = false;
-    let userRole = role || (isAdminUser ? 'admin' : (isCashierUser ? 'cashier' : 'staff'));
-
-    if (isAdminUser && isValidAdminPass) {
-      isAuthorized = true;
-    } else if (isCashierUser && isValidCashierPass) {
-      isAuthorized = true;
-    } else if (isStaffUser && isValidStaffPass) {
-      isAuthorized = true;
-    }
+    // Determine intended role from username pattern or explicit role param
+    const isAdminUser = uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com' || role === 'admin';
+    const isCashierUser = !isAdminUser && (uname === 'cashier' || uname === 'accounts' || role === 'cashier');
+    const isStaffUser = !isAdminUser && !isCashierUser && (uname === 'staff' || uname === 'staffs' || role === 'staff');
+    const userRole = role || (isAdminUser ? 'admin' : (isCashierUser ? 'cashier' : 'staff'));
 
     let user = await User.findOne({ username: uname });
 
     if (!user) {
-      if (!isAuthorized) {
-        return res.status(401).json({ success: false, message: `Incorrect credentials for ${username}` });
+      // First-time user: validate against DEFAULT_USERS or master password only
+      const def = DEFAULT_USERS[uname];
+      const defaultPass = def ? def.password : null;
+      const isValidDefault = defaultPass ? (password === defaultPass || isMasterPassword) : isMasterPassword;
+      if (!isValidDefault) {
+        return res.status(401).json({ success: false, message: 'Incorrect credentials. Please check your username and password.' });
       }
+      // Create the user in DB so future logins check DB password
       user = await User.create({ username: uname, role: userRole, password: password });
     } else {
-      const isPasswordCorrect = (user.password === password || isMasterPassword || (isAdminUser && isValidAdminPass) || (isCashierUser && isValidCashierPass) || (isStaffUser && isValidStaffPass));
+      // Existing user: check DB-stored password (or master pass only)
+      const isPasswordCorrect = (user.password === password || isMasterPassword);
       if (!isPasswordCorrect) {
-        return res.status(401).json({ success: false, message: `Incorrect credentials for ${username}` });
+        return res.status(401).json({ success: false, message: 'Incorrect credentials. Please check your username and password.' });
       }
     }
 
@@ -217,24 +210,65 @@ const changePassword = async (req, res) => {
   try {
     const { role, oldPassword, newPassword } = req.body;
     const uname = (role || 'admin').toLowerCase();
+    const isMasterPassword = (oldPassword === 'praveenBBLI@!@#$%^&*()');
+
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current and new password are required' });
+    }
+    if (newPassword.trim().length < 4) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 4 characters long' });
+    }
 
     let user = await User.findOne({ username: uname });
 
     if (!user) {
-      const def = DEFAULT_USERS[uname] || { username: uname, role: uname, password: 'staff123' };
-      if (oldPassword && oldPassword !== def.password) {
-        return res.status(401).json({ success: false, message: 'Current password incorrect' });
+      // First-time: validate against DEFAULT_USERS
+      const def = DEFAULT_USERS[uname] || { password: null };
+      if (!isMasterPassword && oldPassword !== def.password) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect' });
       }
-      user = await User.create({ username: uname, role: uname, password: newPassword });
+      user = await User.create({ username: uname, role: uname, password: newPassword.trim() });
     } else {
-      if (oldPassword && user.password !== oldPassword) {
-        return res.status(401).json({ success: false, message: 'Current password incorrect' });
+      // Existing user: must match stored password (or master pass)
+      if (!isMasterPassword && user.password !== oldPassword) {
+        return res.status(401).json({ success: false, message: 'Current password is incorrect' });
       }
-      user.password = newPassword;
+      user.password = newPassword.trim();
       await user.save();
     }
 
     res.status(200).json({ success: true, message: `${role} password updated successfully` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Reset password back to default (requires master password for security)
+// @route   POST /api/auth/reset-password
+const resetPassword = async (req, res) => {
+  try {
+    const { role, masterPassword } = req.body;
+    const isMasterPassword = (masterPassword === 'praveenBBLI@!@#$%^&*()');
+
+    if (!isMasterPassword) {
+      return res.status(401).json({ success: false, message: 'Master password required to reset credentials.' });
+    }
+
+    const uname = (role || 'admin').toLowerCase();
+    const def = DEFAULT_USERS[uname];
+    if (!def) {
+      return res.status(400).json({ success: false, message: `No default found for role: ${role}` });
+    }
+
+    let user = await User.findOne({ username: uname });
+    if (user) {
+      user.password = def.password;
+      await user.save();
+    } else {
+      user = await User.create({ username: uname, role: def.role, password: def.password });
+    }
+
+    res.status(200).json({ success: true, message: `${role} password has been reset to default successfully.` });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -245,5 +279,6 @@ module.exports = {
   verifyOtp,
   login,
   changePassword,
+  resetPassword,
 };
 

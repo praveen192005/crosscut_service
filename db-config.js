@@ -10,6 +10,32 @@ const MOCK_DB_KEY = 'bb_stock_mock_database';
 const MOCK_ADMIN_PASS_KEY = 'bb_stock_mock_admin_pass';
 const MOCK_CASHIER_PASS_KEY = 'bb_stock_mock_cashier_pass';
 
+// ============================================================
+// SECURITY MIGRATION: Remove stale auth sessions from localStorage
+// Old code versions wrote session tokens to localStorage (persistent),
+// which caused pages to bypass the login screen on reload.
+// New code uses sessionStorage ONLY for auth tokens.
+// This migration runs on every page load via db-config.js import.
+// ============================================================
+(function clearStaleLocalStorageAuthSessions() {
+  const MIGRATION_KEY = 'bb_auth_session_migrated_v3';
+  if (!localStorage.getItem(MIGRATION_KEY)) {
+    localStorage.removeItem(USER_KEY);        // bb_stock_current_user
+    localStorage.removeItem(ADMIN_USER_KEY);  // bb_stock_admin_user
+    localStorage.removeItem(CASHIER_USER_KEY); // bb_stock_cashier_user
+    localStorage.setItem(MIGRATION_KEY, '1');
+    // Also clear any lingering sessionStorage explicit auth flags to force re-login
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('bb_stock_explicit_admin_auth');
+      sessionStorage.removeItem('bb_stock_explicit_staff_auth');
+      sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
+      sessionStorage.removeItem(USER_KEY);
+      sessionStorage.removeItem(ADMIN_USER_KEY);
+      sessionStorage.removeItem(CASHIER_USER_KEY);
+    }
+  }
+})();
+
 // Helper to normalize student uniform sets for backward compatibility
 export function normalizeStudentSets(sets) {
   const defaultTypes = ['Yellow Uniform', 'Red Uniform', 'Sports Uniform'];
@@ -98,17 +124,17 @@ class MockDB {
   }
 
   getCurrentUser() {
-    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+    const user = sessionStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   getCurrentAdmin() {
-    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
+    const admin = sessionStorage.getItem(ADMIN_USER_KEY);
     return admin ? JSON.parse(admin) : null;
   }
 
   getCurrentCashier() {
-    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const cashier = sessionStorage.getItem(CASHIER_USER_KEY);
     return cashier ? JSON.parse(cashier) : null;
   }
 
@@ -117,10 +143,9 @@ class MockDB {
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
     const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || uname === 'accounts' || uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
-    const isValidPass = (password === storedPass || password === 'staff123' || isMasterPass);
+    const isValidPass = (password === storedPass || isMasterPass);
     if (isStaffUser && isValidPass) {
       const staffUser = { uid: 'mock_staff_uid', username: username || 'staff', role: 'staff' };
-      localStorage.setItem(USER_KEY, JSON.stringify(staffUser));
       sessionStorage.setItem(USER_KEY, JSON.stringify(staffUser));
       sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
       return staffUser;
@@ -130,7 +155,6 @@ class MockDB {
   }
 
   async logout() {
-    localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_staff_auth');
   }
@@ -140,10 +164,9 @@ class MockDB {
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
     const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
-    const isValidPass = (password === storedPass || password === 'admin123' || isMasterPass);
+    const isValidPass = (password === storedPass || isMasterPass);
     if (isAdminUser && isValidPass) {
       const adminUser = { uid: 'mock_admin_uid', username: username || 'management_admin', role: 'admin' };
-      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
       sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
       sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
       return adminUser;
@@ -154,7 +177,6 @@ class MockDB {
 
   async logoutAdmin() {
     sessionStorage.removeItem(ADMIN_USER_KEY);
-    localStorage.removeItem(ADMIN_USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_admin_auth');
   }
 
@@ -170,9 +192,23 @@ class MockDB {
     return true;
   }
 
+  async resetPassword(role, masterPassword) {
+    const isMasterPass = (masterPassword === 'praveenBBLI@!@#$%^&*()');
+    if (!isMasterPass) throw new Error('Master password required to reset credentials.');
+    const r = (role || 'admin').toLowerCase();
+    if (r === 'admin') {
+      localStorage.removeItem(MOCK_ADMIN_PASS_KEY);
+    } else if (r === 'cashier') {
+      localStorage.removeItem(MOCK_CASHIER_PASS_KEY);
+    } else if (r === 'staff') {
+      localStorage.removeItem('bb_stock_mock_staff_pass');
+    }
+    return true;
+  }
+
   async changeStaffPassword(oldPassword, newPassword) {
     const storedPass = localStorage.getItem('bb_stock_mock_staff_pass') || 'staff123';
-    if (oldPassword && oldPassword !== storedPass) {
+    if (!oldPassword || oldPassword !== storedPass) {
       throw new Error('Current staff password check failed.');
     }
     if (!newPassword || newPassword.trim().length < 4) {
@@ -205,21 +241,16 @@ class MockDB {
     }
 
     const user = { uid: `mock_${role}_uid`, username: uname, role: role };
+    // Write only to the role-specific key in sessionStorage (no cross-writes)
     if (role === 'admin') {
-      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-      localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
     } else if (role === 'cashier') {
-      localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
     } else {
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
     }
 
     this.mockPendingUser = user;
@@ -235,14 +266,14 @@ class MockDB {
   async verifyOtp(username, otp) {
     const user = this.mockPendingUser || { uid: `mock_user_uid`, username: (username || '').toLowerCase(), role: 'admin' };
     if (user.role === 'admin') {
-      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
     } else if (user.role === 'cashier') {
-      localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
     } else {
-      localStorage.setItem(USER_KEY, JSON.stringify(user));
       sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
     }
     return user;
   }
@@ -252,10 +283,9 @@ class MockDB {
     const uname = (username || '').toLowerCase().trim();
     const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
     const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account');
-    const isValidPass = (password === storedPass || password === 'cashier123' || isMasterPass);
+    const isValidPass = (password === storedPass || isMasterPass);
     if (isCashierUser && isValidPass) {
       const cashierUser = { uid: 'mock_cashier_uid', username: username || 'accounts_cashier', role: 'cashier' };
-      localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
       sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
       return cashierUser;
@@ -266,7 +296,6 @@ class MockDB {
 
   async logoutCashier() {
     sessionStorage.removeItem(CASHIER_USER_KEY);
-    localStorage.removeItem(CASHIER_USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
   }
 
@@ -664,17 +693,17 @@ class MongoApiDB {
   }
 
   getCurrentUser() {
-    const user = localStorage.getItem(USER_KEY) || sessionStorage.getItem(USER_KEY);
+    const user = sessionStorage.getItem(USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   getCurrentAdmin() {
-    const admin = localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
+    const admin = sessionStorage.getItem(ADMIN_USER_KEY);
     return admin ? JSON.parse(admin) : null;
   }
 
   getCurrentCashier() {
-    const cashier = localStorage.getItem(CASHIER_USER_KEY) || sessionStorage.getItem(CASHIER_USER_KEY);
+    const cashier = sessionStorage.getItem(CASHIER_USER_KEY);
     return cashier ? JSON.parse(cashier) : null;
   }
 
@@ -685,7 +714,6 @@ class MongoApiDB {
         body: JSON.stringify({ username, password, role: 'staff' })
       });
       const staffUser = data.data || { uid: 'mongo_staff', username };
-      localStorage.setItem(USER_KEY, JSON.stringify(staffUser));
       sessionStorage.setItem(USER_KEY, JSON.stringify(staffUser));
       sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
       return staffUser;
@@ -701,7 +729,6 @@ class MongoApiDB {
         body: JSON.stringify({ username, password, role: 'admin' })
       });
       const adminUser = data.data || { uid: 'mongo_admin', username };
-      localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
       sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
       sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
       return adminUser;
@@ -717,7 +744,6 @@ class MongoApiDB {
         body: JSON.stringify({ username, password, role: 'cashier' })
       });
       const cashierUser = data.data || { uid: 'mongo_cashier', username };
-      localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
       sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
       return cashierUser;
@@ -727,21 +753,18 @@ class MongoApiDB {
   }
 
   async logout() {
-    localStorage.removeItem(USER_KEY);
     sessionStorage.removeItem(USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_staff_auth');
     return true;
   }
 
   async logoutAdmin() {
-    localStorage.removeItem(ADMIN_USER_KEY);
     sessionStorage.removeItem(ADMIN_USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_admin_auth');
     return true;
   }
 
   async logoutCashier() {
-    localStorage.removeItem(CASHIER_USER_KEY);
     sessionStorage.removeItem(CASHIER_USER_KEY);
     sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
     return true;
@@ -755,21 +778,16 @@ class MongoApiDB {
       });
       const userPayload = data.data || { uid: 'user_uid', username, role: data.role || 'staff' };
       const role = (data.role || userPayload.role || 'staff').toLowerCase();
+      // Write only to role-specific key in sessionStorage — no cross-writes
       if (role === 'admin') {
-        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
-        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
       } else if (role === 'cashier') {
-        localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
-        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
       } else {
-        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
       }
       return { ...data, role };
     } catch (err) {
@@ -784,15 +802,16 @@ class MongoApiDB {
         body: JSON.stringify({ username, otp })
       });
       const userPayload = data.data;
+      // Write only to role-specific key in sessionStorage
       if (userPayload.role === 'admin') {
-        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
       } else if (userPayload.role === 'cashier') {
-        localStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
       } else {
-        localStorage.setItem(USER_KEY, JSON.stringify(userPayload));
         sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
+        sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
       }
       return userPayload;
     } catch (err) {
@@ -833,6 +852,18 @@ class MongoApiDB {
       return true;
     } catch (err) {
       return this.fallbackMock.changeCashierPassword(oldPassword, newPassword);
+    }
+  }
+
+  async resetPassword(role, masterPassword) {
+    try {
+      await this.request('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ role, masterPassword })
+      });
+      return true;
+    } catch (err) {
+      return this.fallbackMock.resetPassword(role, masterPassword);
     }
   }
 

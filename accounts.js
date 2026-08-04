@@ -1,5 +1,5 @@
 // accounts.js
-import { db } from './db-config.js?v=20260806';
+import { db } from './db-config.js?v=20260805_sec';
 
 // Global Cashier Application State
 const state = {
@@ -186,7 +186,6 @@ window.handleCashierLogin = async function(e) {
     state.currentUser = user || { uid: 'cashier_user', username: username || 'cashier', role: 'cashier' };
     
     const userStr = JSON.stringify(state.currentUser);
-    localStorage.setItem('bb_stock_cashier_user', userStr);
     sessionStorage.setItem('bb_stock_cashier_user', userStr);
     sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
 

@@ -16,7 +16,7 @@
 
 
   <!-- Application Main Controller -->
-  <script type="module" src="app.js?v=20260825"></script>
+  <script type="module" src="app.js?v=20260805_sec"></script>
 </head>
 <body>
 
@@ -556,6 +556,32 @@
                 Update Staff Password 🔑
               </button>
             </form>
+          </div>
+
+          <div class="glass-panel" style="max-width: 520px; margin-top: 24px; border: 1px solid rgba(239,68,68,0.25);">
+            <div class="panel-header">
+              <h3>🔄 Reset Password to Default</h3>
+            </div>
+            <div style="margin-top: 16px;">
+              <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 14px;">
+                Use this to reset any portal password back to its factory default. Requires the <strong>Master Password</strong>.
+              </p>
+              <div class="form-group">
+                <label for="reset-master-password">Master Password</label>
+                <input type="password" id="reset-master-password" class="input-ctrl" placeholder="Enter master password to confirm">
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px;">
+                <button id="btn-reset-admin-pass" class="btn btn-sm" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); flex: 1; min-width: 130px;">
+                  🔄 Reset Admin → admin123
+                </button>
+                <button id="btn-reset-cashier-pass" class="btn btn-sm" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); flex: 1; min-width: 130px;">
+                  🔄 Reset Cashier → cashier123
+                </button>
+                <button id="btn-reset-staff-pass" class="btn btn-sm" style="background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.3); flex: 1; min-width: 130px;">
+                  🔄 Reset Staff → staff123
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="glass-panel" style="max-width: 520px; margin-top: 24px;">

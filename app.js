@@ -1,5 +1,5 @@
 // app.js
-import { db } from './db-config.js?v=20260806';
+import { db } from './db-config.js?v=20260805_sec';
 
 // Detect Portal Mode (Robust support for clean URLs e.g. /admin and /admin.html)
 const isAdminPage = window.location.pathname.includes('admin') || document.getElementById('admin-login-form') !== null;
@@ -321,9 +321,13 @@ document.getElementById('btn-logout').addEventListener('click', async () => {
 if (document.getElementById('btn-enter-demo')) {
   document.getElementById('btn-enter-demo').addEventListener('click', async () => {
     if (isAdminPage) {
-      localStorage.setItem('bb_stock_admin_user', JSON.stringify({ uid: 'mock_admin_uid', username: 'management_admin' }));
+      const demoAdmin = { uid: 'mock_admin_uid', username: 'management_admin', role: 'admin' };
+      sessionStorage.setItem('bb_stock_admin_user', JSON.stringify(demoAdmin));
+      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
     } else {
-      localStorage.setItem('bb_stock_current_user', JSON.stringify({ uid: 'mock_staff_uid', phoneNumber: '+1 555-0199' }));
+      const demoStaff = { uid: 'mock_staff_uid', username: 'staff_demo', role: 'staff' };
+      sessionStorage.setItem('bb_stock_current_user', JSON.stringify(demoStaff));
+      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
     }
     checkAuth();
     showToast('Entered Local Demo Mode!', 'success');
@@ -2617,6 +2621,35 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Setup navigation
   initNavigation();
   
+  // Reset Password buttons (Portal Settings)
+  ['admin', 'cashier', 'staff'].forEach(role => {
+    const btn = document.getElementById(`btn-reset-${role}-pass`);
+    if (btn) {
+      btn.addEventListener('click', async () => {
+        const masterPassEl = document.getElementById('reset-master-password');
+        const masterPassword = masterPassEl ? masterPassEl.value : '';
+        if (!masterPassword) {
+          showToast('Please enter the master password first.', 'error');
+          return;
+        }
+        const defaultPass = role === 'admin' ? 'admin123' : role === 'cashier' ? 'cashier123' : 'staff123';
+        if (!confirm(`Reset ${role} password back to "${defaultPass}"? This cannot be undone.`)) return;
+        btn.disabled = true;
+        btn.textContent = 'Resetting...';
+        try {
+          await db.resetPassword(role, masterPassword);
+          showToast(`✅ ${role.charAt(0).toUpperCase() + role.slice(1)} password reset to "${defaultPass}" successfully!`, 'success');
+          if (masterPassEl) masterPassEl.value = '';
+        } catch (err) {
+          showToast(err.message || `Failed to reset ${role} password.`, 'error');
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = `🔄 Reset ${role.charAt(0).toUpperCase() + role.slice(1)} → ${defaultPass}`;
+        }
+      });
+    }
+  });
+
   // Authenticate user
   await checkAuth();
 });

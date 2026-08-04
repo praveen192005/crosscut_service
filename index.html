@@ -173,8 +173,19 @@
   </style>
 
   <script type="module">
-    import { db } from './db-config.js?v=20260804';
+    import { db } from './db-config.js?v=20260805_sec';
     window.db = db;
+
+    // One-time migration: clear stale auth data from localStorage (old code wrote here, new code uses sessionStorage only)
+    (function clearOldLocalStorageAuthData() {
+      const MIGRATED_KEY = 'bb_auth_migrated_v2';
+      if (!localStorage.getItem(MIGRATED_KEY)) {
+        localStorage.removeItem('bb_stock_current_user');
+        localStorage.removeItem('bb_stock_admin_user');
+        localStorage.removeItem('bb_stock_cashier_user');
+        localStorage.setItem(MIGRATED_KEY, '1');
+      }
+    })();
 
     async function performDirectLogin(e) {
       if (e) {
