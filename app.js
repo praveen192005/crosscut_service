@@ -2431,20 +2431,89 @@ function showReceiptModal(student, setNumber, status, topSize, bottomSize, sport
   `, [
     { text: 'Close', type: 'secondary', handler: closeModal },
     { text: '🖨️ Print Slip', type: 'primary', handler: () => {
+        const renderSlip = () => `
+          <div style="font-family: 'Inter', sans-serif; color: #000; padding: 14px 18px; background: #fff; border-radius: 6px; border: 1px dashed #cbd5e1; max-width: 550px; margin: 0 auto; line-height: 1.35; position: relative;">
+            <div style="text-align: center; border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 10px;">
+              <h2 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 700;">CROSS CUT ENTERPRISES</h2>
+              <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: #555;">School Uniform Allocation Slip</p>
+            </div>
+            
+            <div style="font-size: 0.85rem; margin-bottom: 10px;">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="color: #666;">Receipt ID:</span>
+                <strong style="font-size: 0.95rem; color: #1e1b4b;">${receiptId}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="color: #666;">Date & Time:</span>
+                <span>${dateStr}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                <span style="color: #666;">Operator:</span>
+                <span>${operator}</span>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 8px 0; margin-bottom: 10px; font-size: 0.85rem;">
+              <div style="margin-bottom: 4px;"><strong>Student Details:</strong></div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #666;">Name:</span>
+                <strong>${student.name}</strong>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #666;">Branch:</span>
+                <span>${student.branch}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #666;">Class:</span>
+                <span>${student.grade}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span style="color: #666;">Gender:</span>
+                <span>${student.gender}</span>
+              </div>
+            </div>
+
+            <div style="border-bottom: 2px dashed #000; padding-bottom: 8px; margin-bottom: 10px; font-size: 0.85rem;">
+              <div style="margin-bottom: 4px;"><strong>Issued Item:</strong></div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px;">
+                <span>${details}</span>
+                <span style="font-weight: 600; color: ${status === 'Issued' ? '#10b981' : '#f59e0b'};">${status}</span>
+              </div>
+              <div style="display: flex; justify-content: space-between; margin-bottom: 3px; font-size: 0.8rem; color: #555;">
+                <span>Sizes: Top ${topSize || 'N/A'} / Bottom ${bottomSize || 'N/A'}</span>
+                <span>Qty: 1 Set</span>
+              </div>
+            </div>
+
+            <div style="text-align: center; font-size: 0.75rem; color: #666;">
+              <p style="margin: 0;">Thank you! Please retain this slip for verification.</p>
+            </div>
+          </div>
+        `;
+
         const htmlSlip = `
           <!DOCTYPE html>
           <html>
             <head>
               <title>Print Uniform Receipt - ${student.name}</title>
               <style>
-                body { margin: 0; padding: 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-                @media print {
-                  body { padding: 0; }
-                }
+                @page { size: A4 portrait; margin: 8mm; }
+                * { box-sizing: border-box; }
+                body { margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; }
+                .wrapper { display: flex; flex-direction: column; gap: 12px; }
+                .cut-divider { text-align: center; border-top: 2px dashed #94a3b8; margin: 12px 0; position: relative; height: 1px; }
+                .cut-label { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); background: #fff; padding: 0 10px; font-size: 9.5px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+                @media print { body { padding: 0; } }
               </style>
             </head>
             <body>
-              ${printContent}
+              <div class="wrapper">
+                ${renderSlip()}
+                <div class="cut-divider">
+                  <span class="cut-label">✂ Cut Here ✂</span>
+                </div>
+                ${renderSlip()}
+              </div>
               <script>
                 function autoPrint() {
                   try {

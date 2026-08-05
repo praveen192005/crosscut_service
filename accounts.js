@@ -652,85 +652,205 @@ function printInvoicePDF(bill) {
   const dateStr = new Date(bill.createdAt).toLocaleString();
   const paidDateStr = bill.paidAt ? new Date(bill.paidAt).toLocaleString() : 'N/A';
   const receiptType = bill.status === 'Paid' ? 'PAYMENT RECEIPT' : 'BILL INVOICE';
-  
+
+  const renderSingleInvoice = () => `
+    <div class="invoice-card">
+      ${bill.status === 'Paid' 
+        ? `<div class="watermark">PAID</div>` 
+        : `<div class="watermark watermark-pending">PENDING</div>`
+      }
+      
+      <div class="header">
+        <div>
+          <h1 class="school-name">CROSS CUT ENTERPRISES</h1>
+          <div class="receipt-title">${receiptType}</div>
+        </div>
+        <div class="invoice-meta">
+          <div class="invoice-id">${bill.id}</div>
+          <div class="meta-line">Created: ${dateStr}</div>
+          ${bill.status === 'Paid' ? `<div class="meta-line">Settled: ${paidDateStr}</div>` : ''}
+          <div class="meta-line">Desk: ${bill.cashier}</div>
+        </div>
+      </div>
+
+      <div class="details-grid">
+        <div class="grid-col">
+          <h4>Student Details</h4>
+          <div class="grid-line">
+            <span class="grid-label">Student Name:</span>
+            <span class="grid-value">${bill.studentName}</span>
+          </div>
+          <div class="grid-line">
+            <span class="grid-label">Grade / Class:</span>
+            <span class="grid-value">${bill.grade}</span>
+          </div>
+        </div>
+        <div class="grid-col">
+          <h4>Registration Details</h4>
+          <div class="grid-line">
+            <span class="grid-label">School Branch:</span>
+            <span class="grid-value">${bill.branch}</span>
+          </div>
+          <div class="grid-line">
+            <span class="grid-label">Student Gender:</span>
+            <span class="grid-value">${bill.gender}</span>
+          </div>
+        </div>
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th style="width: 65%;">Item Description</th>
+            <th style="width: 15%; text-align: center;">Qty</th>
+            <th style="width: 20%; text-align: right;">Total Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <strong>Uniform Package Allocation (3 Complete Sets)</strong>
+              <div style="font-size: 10px; color: #666; margin-top: 2px;">
+                Standard classroom shirts, bottoms, and sports uniform tailored for ${bill.gender}. Grade Category Fee.
+              </div>
+            </td>
+            <td style="text-align: center;">1 Pack</td>
+            <td style="text-align: right; font-weight: 600;">₹${bill.feeAmount}.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="amount-summary">
+        <div class="amount-card">
+          <div class="summary-row">
+            <span style="color: #666;">Subtotal:</span>
+            <span>₹${bill.feeAmount}.00</span>
+          </div>
+          <div class="summary-row">
+            <span style="color: #666;">Tax / Surcharges:</span>
+            <span>₹0.00</span>
+          </div>
+          <div class="summary-total">
+            <span>Grand Total:</span>
+            <span>₹${bill.feeAmount}.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size: 10px; color: #777; border-top: 1px solid #edf2f7; padding-top: 8px;">
+        <strong>Receipt Information:</strong> Proof of payment for uniform set. Uniforms issued upon presentation of paid bill validation.
+      </div>
+
+      <div class="signature-section">
+        <div class="sig-box">
+          <div style="font-size: 11px; font-weight: 600; text-align: left;">
+            ${bill.status === 'Paid' ? 'Verified Cashier' : 'Issued Cashier'}
+          </div>
+          <div style="font-style: italic; font-size: 11px; text-align: left; color: #555; height: 20px; line-height: 25px;">
+            ${bill.cashier}
+          </div>
+          <div class="sig-label">Prepared By</div>
+        </div>
+        <div class="sig-box">
+          <div class="sig-line"></div>
+          <div class="sig-label">Acc Staff / Cashier Signature</div>
+        </div>
+      </div>
+    </div>
+  `;
+
   const htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
-      <title>CROSS CUT ENTERPRISES - Uniform Fee Receipt</title>
+      <title>CROSS CUT ENTERPRISES - Uniform Fee Receipt (${bill.id})</title>
       <style>
+        @page {
+          size: A4 portrait;
+          margin: 6mm 8mm;
+        }
+        * {
+          box-sizing: border-box;
+        }
         body {
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           color: #1a1a1a;
-          padding: 40px;
-          line-height: 1.5;
-          font-size: 14px;
+          padding: 0;
+          margin: 0;
+          line-height: 1.3;
+          font-size: 12px;
+          background: #fff;
+        }
+        .page-wrapper {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
         .invoice-card {
-          max-width: 650px;
-          margin: 0 auto;
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 30px;
+          border: 1px solid #cbd5e1;
+          border-radius: 6px;
+          padding: 14px 18px;
           background: #fff;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
           position: relative;
+          box-shadow: none;
         }
         .header {
           display: flex;
           justify-content: space-between;
           border-bottom: 2px solid #6366f1;
-          padding-bottom: 20px;
-          margin-bottom: 24px;
+          padding-bottom: 8px;
+          margin-bottom: 10px;
         }
         .school-name {
-          font-size: 24px;
+          font-size: 18px;
           font-weight: 700;
           margin: 0;
           color: #4f46e5;
           letter-spacing: -0.5px;
         }
         .receipt-title {
-          font-size: 16px;
+          font-size: 12px;
           font-weight: 600;
           color: #666;
-          margin-top: 4px;
+          margin-top: 2px;
         }
         .invoice-meta {
           text-align: right;
         }
         .invoice-id {
-          font-size: 18px;
-          font-weight: 700;
-          color: #1a1a1a;
-          margin-bottom: 6px;
+          font-size: 17px;
+          font-weight: 800;
+          color: #1e1b4b;
+          margin-bottom: 3px;
+          letter-spacing: 0.5px;
         }
         .meta-line {
-          font-size: 12px;
+          font-size: 10.5px;
           color: #555;
-          margin-bottom: 2px;
+          margin-bottom: 1px;
         }
         .details-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
+          gap: 12px;
           background: #f8fafc;
           border-radius: 6px;
-          padding: 16px;
-          margin-bottom: 24px;
+          padding: 8px 12px;
+          margin-bottom: 10px;
           border: 1px solid #e2e8f0;
         }
         .grid-col h4 {
-          margin: 0 0 8px 0;
+          margin: 0 0 4px 0;
           color: #64748b;
-          font-size: 12px;
+          font-size: 10px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .grid-line {
-          margin-bottom: 6px;
+          margin-bottom: 2px;
           display: flex;
           justify-content: space-between;
+          font-size: 11px;
         }
         .grid-label {
           color: #666;
@@ -741,84 +861,105 @@ function printInvoicePDF(bill) {
         .table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 30px;
+          margin-bottom: 10px;
         }
         .table th {
           border-bottom: 2px solid #e2e8f0;
-          padding: 10px 4px;
+          padding: 6px 4px;
           text-align: left;
           color: #64748b;
-          font-size: 12px;
+          font-size: 10px;
           text-transform: uppercase;
         }
         .table td {
           border-bottom: 1px solid #edf2f7;
-          padding: 12px 4px;
-          font-size: 13.5px;
+          padding: 6px 4px;
+          font-size: 11px;
         }
         .amount-summary {
           display: flex;
           justify-content: flex-end;
-          margin-bottom: 40px;
+          margin-bottom: 10px;
         }
         .amount-card {
-          width: 250px;
-          border-top: 2px solid #eee;
-          padding-top: 10px;
+          width: 220px;
+          border-top: 1px solid #eee;
+          padding-top: 4px;
         }
         .summary-row {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 6px;
+          margin-bottom: 3px;
+          font-size: 11px;
         }
         .summary-total {
           display: flex;
           justify-content: space-between;
-          font-size: 16px;
+          font-size: 13px;
           font-weight: 700;
           color: #4f46e5;
-          margin-top: 8px;
+          margin-top: 4px;
           border-top: 1px dashed #ddd;
-          padding-top: 8px;
+          padding-top: 4px;
         }
         .watermark {
           position: absolute;
-          top: 35%;
-          left: 20%;
-          font-size: 70px;
+          top: 30%;
+          left: 25%;
+          font-size: 46px;
           font-weight: 800;
-          color: rgba(16, 185, 129, 0.08);
-          transform: rotate(-25deg);
-          border: 8px solid rgba(16, 185, 129, 0.08);
-          padding: 10px 30px;
-          border-radius: 12px;
+          color: rgba(16, 185, 129, 0.07);
+          transform: rotate(-20deg);
+          border: 6px solid rgba(16, 185, 129, 0.07);
+          padding: 6px 20px;
+          border-radius: 10px;
           pointer-events: none;
           letter-spacing: 2px;
           text-transform: uppercase;
         }
         .watermark-pending {
-          color: rgba(245, 158, 11, 0.08);
-          border-color: rgba(245, 158, 11, 0.08);
+          color: rgba(245, 158, 11, 0.07);
+          border-color: rgba(245, 158, 11, 0.07);
         }
         .signature-section {
-          margin-top: 60px;
+          margin-top: 14px;
           display: flex;
           justify-content: space-between;
           align-items: flex-end;
         }
         .sig-box {
           text-align: center;
-          width: 200px;
+          width: 170px;
         }
         .sig-line {
           border-bottom: 1px solid #1a1a1a;
-          margin-bottom: 8px;
-          height: 30px;
+          margin-bottom: 4px;
+          height: 18px;
         }
         .sig-label {
-          font-size: 12px;
+          font-size: 10px;
           color: #666;
           font-weight: 500;
+        }
+        .cut-divider {
+          text-align: center;
+          border-top: 2px dashed #94a3b8;
+          margin: 6px 0;
+          position: relative;
+          height: 1px;
+        }
+        .cut-label {
+          position: absolute;
+          top: -9px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: #fff;
+          padding: 0 10px;
+          font-size: 9.5px;
+          color: #64748b;
+          font-weight: 600;
+          letter-spacing: 1px;
+          text-transform: uppercase;
         }
         @media print {
           body {
@@ -826,116 +967,22 @@ function printInvoicePDF(bill) {
             background: #fff;
           }
           .invoice-card {
-            border: none;
+            border: 1px dashed #cbd5e1;
             box-shadow: none;
-            padding: 10px;
+          }
+          .cut-divider {
+            margin: 8px 0;
           }
         }
       </style>
     </head>
     <body>
-      <div class="invoice-card">
-        ${bill.status === 'Paid' 
-          ? `<div class="watermark">PAID</div>` 
-          : `<div class="watermark watermark-pending">PENDING</div>`
-        }
-        
-        <div class="header">
-          <div>
-            <h1 class="school-name">CROSS CUT ENTERPRISES</h1>
-            <div class="receipt-title">${receiptType}</div>
-          </div>
-          <div class="invoice-meta">
-            <div class="invoice-id">${bill.id}</div>
-            <div class="meta-line">Created: ${dateStr}</div>
-            ${bill.status === 'Paid' ? `<div class="meta-line">Settled: ${paidDateStr}</div>` : ''}
-            <div class="meta-line">Desk: ${bill.cashier}</div>
-          </div>
+      <div class="page-wrapper">
+        ${renderSingleInvoice()}
+        <div class="cut-divider">
+          <span class="cut-label">✂ Cut Here ✂</span>
         </div>
-
-        <div class="details-grid">
-          <div class="grid-col">
-            <h4>Student Details</h4>
-            <div class="grid-line">
-              <span class="grid-label">Student Name:</span>
-              <span class="grid-value">${bill.studentName}</span>
-            </div>
-            <div class="grid-line">
-              <span class="grid-label">Grade / Class:</span>
-              <span class="grid-value">${bill.grade}</span>
-            </div>
-          </div>
-          <div class="grid-col">
-            <h4>Registration Details</h4>
-            <div class="grid-line">
-              <span class="grid-label">School Branch:</span>
-              <span class="grid-value">${bill.branch}</span>
-            </div>
-            <div class="grid-line">
-              <span class="grid-label">Student Gender:</span>
-              <span class="grid-value">${bill.gender}</span>
-            </div>
-          </div>
-        </div>
-
-        <table class="table">
-          <thead>
-            <tr>
-              <th style="width: 70%;">Item Description</th>
-              <th style="width: 10%; text-align: center;">Qty</th>
-              <th style="width: 20%; text-align: right;">Total Price</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>
-                <strong>Uniform Package Allocation (3 Complete Sets)</strong>
-                <div style="font-size: 11px; color: #666; margin-top: 4px;">
-                  Includes standard classroom shirts, bottoms, and sports uniform tailored for ${bill.gender}. Grade Category Fee.
-                </div>
-              </td>
-              <td style="text-align: center;">1 Pack</td>
-              <td style="text-align: right; font-weight: 600;">₹${bill.feeAmount}.00</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="amount-summary">
-          <div class="amount-card">
-            <div class="summary-row">
-              <span style="color: #666;">Subtotal:</span>
-              <span>₹${bill.feeAmount}.00</span>
-            </div>
-            <div class="summary-row">
-              <span style="color: #666;">Tax / Surcharges:</span>
-              <span>₹0.00</span>
-            </div>
-            <div class="summary-total">
-              <span>Grand Total:</span>
-              <span>₹${bill.feeAmount}.00</span>
-            </div>
-          </div>
-        </div>
-
-        <div style="font-size: 11px; color: #777; border-top: 1px solid #edf2f7; padding-top: 16px;">
-          <strong>Receipt Information:</strong> This receipt acts as official proof of payment for the uniform sets. Uniforms will only be issued upon presentation of a paid bill validation.
-        </div>
-
-        <div class="signature-section">
-          <div class="sig-box">
-            <div style="font-size: 12px; font-weight: 600; text-align: left; padding-left: 20px;">
-              ${bill.status === 'Paid' ? 'Verified Cashier' : 'Issued Cashier'}
-            </div>
-            <div style="font-style: italic; font-size: 13px; text-align: left; padding-left: 20px; color: #555; height: 30px; line-height: 40px;">
-              ${bill.cashier}
-            </div>
-            <div class="sig-label">Prepared By</div>
-          </div>
-          <div class="sig-box">
-            <div class="sig-line"></div>
-            <div class="sig-label">"Signature"_________<br>Acc Staff / Cashier Sign</div>
-          </div>
-        </div>
+        ${renderSingleInvoice()}
       </div>
       <script>
         function autoPrint() {
