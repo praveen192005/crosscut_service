@@ -15,14 +15,25 @@ const getBills = async (req, res) => {
 // @route   POST /api/bills
 const createBill = async (req, res) => {
   try {
-    const { studentId, studentName, grade, branch, gender, feeAmount, amount, cashier, operator } = req.body;
+    const { studentId, studentName, grade, branch, gender, feeAmount, amount, cashier, operator, fatherName, admissionNo } = req.body;
     
     const valFee = feeAmount !== undefined ? feeAmount : amount;
     if (!studentId || !studentName || valFee === undefined) {
       return res.status(400).json({ success: false, message: 'studentId, studentName, and feeAmount are required' });
     }
 
-    const billId = `BILL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+    const sequentialBills = await Bill.find({ billId: /^BILL-\d+$/i });
+    let maxNum = 0;
+    sequentialBills.forEach(b => {
+      const match = b.billId.match(/^BILL-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num < 1000000000 && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    const billId = `BILL-${maxNum + 1}`;
 
     const bill = await Bill.create({
       billId,
@@ -31,6 +42,8 @@ const createBill = async (req, res) => {
       grade: grade || '',
       branch: branch || 'BBLI',
       gender: gender || '',
+      fatherName: fatherName || '',
+      admissionNo: admissionNo || '',
       feeAmount: parseFloat(valFee) || 0,
       status: 'Pending',
       cashier: operator || cashier || 'Cashier Desk',

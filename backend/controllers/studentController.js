@@ -26,7 +26,7 @@ const getStudents = async (req, res) => {
 // @route   POST /api/students
 const addStudent = async (req, res) => {
   try {
-    const { name, branch, gender, grade } = req.body;
+    const { name, branch, gender, grade, fatherName, admissionNo } = req.body;
     if (!name || !branch || !gender || !grade) {
       return res.status(400).json({ success: false, message: 'All student details (name, branch, gender, grade) are required' });
     }
@@ -36,6 +36,8 @@ const addStudent = async (req, res) => {
       branch,
       gender,
       grade,
+      fatherName: fatherName || '',
+      admissionNo: admissionNo || '',
       sets: getDefaultSets()
     });
 

@@ -7,8 +7,7 @@ const DEFAULT_USERS = {
   admin: { username: 'admin', role: 'admin', password: 'admin123' },
   cashier: { username: 'cashier', role: 'cashier', password: 'cashier123' },
   staff: { username: 'staff', role: 'staff', password: 'staff123' },
-  'praveen192005@gmail.com': { username: 'praveen192005@gmail.com', role: 'admin', password: 'praveenBBLI@!@#$%^&*()' },
-  'sivapraveen339@gmail.com': { username: 'sivapraveen339@gmail.com', role: 'admin', password: 'praveenBBLI@!@#$%^&*()' },
+  'praveenbrainyblooms@gmail.com': { username: 'praveenbrainyblooms@gmail.com', role: 'admin', password: 'admin123' },
 };
 
 // In-memory OTP storage: key -> { otp, expiresAt, userPayload }
@@ -22,7 +21,7 @@ const sendEmailViaHttpsApi = (mailOptions) => {
 
     if (brevoApiKey) {
       const payload = JSON.stringify({
-        sender: { name: "Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
+        sender: { name: "Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenbrainyblooms@gmail.com" },
         to: [{ email: mailOptions.to }],
         subject: mailOptions.subject,
         htmlContent: mailOptions.html,
@@ -101,7 +100,7 @@ const sendEmailViaHttpsApi = (mailOptions) => {
 
 // Configure Nodemailer transporter optimized for cloud platforms (Render, etc.)
 const createTransporter = () => {
-  const user = process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
+  const user = process.env.EMAIL_USER || 'praveenbrainyblooms@gmail.com';
   const rawPass = process.env.EMAIL_PASS || 'euakdzdsvgruofbc';
   const pass = rawPass.replace(/\s+/g, ''); // Strip any space from Google App Password
 
@@ -134,32 +133,102 @@ const loginStep1 = async (req, res) => {
     }
 
     const uname = (username || '').toLowerCase().trim();
-    const isMasterPassword = (password === 'praveenBBLI@!@#$%^&*()');
 
-    // Determine intended role from username pattern or explicit role param
-    const isAdminUser = uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com' || role === 'admin';
-    const isCashierUser = !isAdminUser && (uname === 'cashier' || uname === 'accounts' || role === 'cashier');
-    const isStaffUser = !isAdminUser && !isCashierUser && (uname === 'staff' || uname === 'staffs' || role === 'staff');
-    const userRole = role || (isAdminUser ? 'admin' : (isCashierUser ? 'cashier' : 'staff'));
+    // Strict whitelist: only these exact usernames are permitted
+    const ALLOWED_USERNAMES = ['praveenbrainyblooms@gmail.com', 'admin', 'staff', 'cashier', 'staffs', 'accounts'];
+    if (!ALLOWED_USERNAMES.includes(uname)) {
+      return res.status(403).json({ success: false, message: 'Access denied. Invalid credentials.' });
+    }
 
+    // Strict Password Check: Only the configured master password is accepted
+    if (password !== 'praveenBBLI@!@#$%^&*()') {
+      return res.status(401).json({ success: false, message: 'Incorrect password. Please check your credentials.' });
+    }
+
+    const userRole = role || (uname === 'cashier' ? 'cashier' : (uname === 'staff' ? 'staff' : 'admin'));
     let user = await User.findOne({ username: uname });
 
     if (!user) {
-      // First-time user: validate against DEFAULT_USERS or master password only
-      const def = DEFAULT_USERS[uname];
-      const defaultPass = def ? def.password : null;
-      const isValidDefault = defaultPass ? (password === defaultPass || isMasterPassword) : isMasterPassword;
-      if (!isValidDefault) {
-        return res.status(401).json({ success: false, message: 'Incorrect credentials. Please check your username and password.' });
-      }
-      // Create the user in DB so future logins check DB password
       user = await User.create({ username: uname, role: userRole, password: password });
+    }
+
+    const userPayload = {
+      uid: user._id.toString(),
+      username: user.username,
+      role: user.role,
+    };
+
+    res.status(200).json({
+      success: true,
+      message: 'Credentials verified!',
+      data: userPayload,
+      role: user.role,
+      username: user.username,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Verify Security Question (Answer: BEST)
+// @route   POST /api/auth/verify-otp
+const verifyOtp = async (req, res) => {
+  try {
+    const { username, answer, otp } = req.body;
+    const ans = (answer || otp || '').toString().trim();
+    
+    if (ans !== 'BesT') {
+      return res.status(401).json({ success: false, message: 'Incorrect security answer! Access denied.' });
+    }
+
+    const uname = (username || 'praveenbrainyblooms@gmail.com').toLowerCase();
+    let user = await User.findOne({ username: uname });
+    const userPayload = user ? { uid: user._id.toString(), username: user.username, role: user.role } : { uid: 'mock_uid', username: uname, role: 'admin' };
+    
+    res.status(200).json({
+      success: true,
+      message: 'Login verified successfully!',
+      data: userPayload,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Authenticate user login (Portal login endpoint)
+// @route   POST /api/auth/login
+const login = async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: 'Username and Password are required' });
+    }
+
+    const uname = (username || '').toLowerCase().trim();
+    const reqRole = (role || (uname === 'cashier' ? 'cashier' : (uname === 'staff' ? 'staff' : 'admin'))).toLowerCase();
+
+    let user = await User.findOne({ username: uname });
+    
+    // Check against expected portal passwords
+    let isValid = false;
+    if (reqRole === 'staff') {
+      const expectedPass = (user && user.password) ? user.password : 'staff123';
+      isValid = (password === expectedPass);
+    } else if (reqRole === 'cashier') {
+      const expectedPass = (user && user.password) ? user.password : 'cashier123';
+      isValid = (password === expectedPass);
     } else {
-      // Existing user: check DB-stored password (or master pass only)
-      const isPasswordCorrect = (user.password === password || isMasterPassword);
-      if (!isPasswordCorrect) {
-        return res.status(401).json({ success: false, message: 'Incorrect credentials. Please check your username and password.' });
-      }
+      // Admin defaults to admin123
+      const expectedPass = (user && user.password) ? user.password : 'admin123';
+      isValid = (password === expectedPass);
+    }
+
+    if (!isValid) {
+      return res.status(401).json({ success: false, message: 'Incorrect password. Please check your credentials.' });
+    }
+
+    if (!user) {
+      user = await User.create({ username: uname, role: reqRole, password: password });
     }
 
     const userPayload = {
@@ -172,36 +241,10 @@ const loginStep1 = async (req, res) => {
       success: true,
       message: 'Login successful!',
       data: userPayload,
-      role: user.role,
-      username: user.username,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
-};
-
-// @desc    Verify OTP (Legacy compatibility endpoint - auto-approves)
-// @route   POST /api/auth/verify-otp
-const verifyOtp = async (req, res) => {
-  try {
-    const { username } = req.body;
-    const uname = (username || 'admin').toLowerCase();
-    let user = await User.findOne({ username: uname });
-    const userPayload = user ? { uid: user._id.toString(), username: user.username, role: user.role } : { uid: 'mock_uid', username: uname, role: 'staff' };
-    res.status(200).json({
-      success: true,
-      message: 'Login verified successfully!',
-      data: userPayload,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Authenticate user login (Direct route)
-// @route   POST /api/auth/login
-const login = async (req, res) => {
-  return loginStep1(req, res);
 };
 
 // @desc    Change password (for admin, staff, or cashier)

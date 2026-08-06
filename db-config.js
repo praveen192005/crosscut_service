@@ -133,9 +133,9 @@ class MockDB {
   async loginStaff(username, password) {
     const storedPass = localStorage.getItem('bb_stock_mock_staff_pass') || 'staff123';
     const uname = (username || '').toLowerCase().trim();
-    const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-    const isStaffUser = uname === 'staff' || uname === 'staffs' || uname.includes('staff') || uname === 'accounts' || uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
-    const isValidPass = (password === storedPass || isMasterPass);
+    const ALLOWED_STAFF = ['staff', 'staffs', 'praveenbrainyblooms@gmail.com', 'admin'];
+    const isStaffUser = ALLOWED_STAFF.includes(uname);
+    const isValidPass = (password === storedPass);
     if (isStaffUser && isValidPass) {
       const staffUser = { uid: 'mock_staff_uid', username: username || 'staff', role: 'staff' };
       sessionStorage.setItem(USER_KEY, JSON.stringify(staffUser));
@@ -152,19 +152,19 @@ class MockDB {
   }
 
   async loginAdmin(username, password) {
-    const storedPass = localStorage.getItem(MOCK_ADMIN_PASS_KEY) || 'admin123';
     const uname = (username || '').toLowerCase().trim();
-    const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-    const isAdminUser = uname === 'admin' || uname.includes('admin') || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com';
-    const isValidPass = (password === storedPass || isMasterPass);
-    if (isAdminUser && isValidPass) {
-      const adminUser = { uid: 'mock_admin_uid', username: username || 'management_admin', role: 'admin' };
-      sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
-      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-      return adminUser;
-    } else {
-      throw new Error('Incorrect admin credentials.');
+    const ALLOWED = ['praveenbrainyblooms@gmail.com', 'admin'];
+    if (!ALLOWED.includes(uname)) {
+      throw new Error('Access denied. Invalid credentials.');
     }
+    const storedPass = localStorage.getItem(MOCK_ADMIN_PASS_KEY) || 'admin123';
+    if (password !== storedPass) {
+      throw new Error('Incorrect password. Please check your credentials.');
+    }
+    const adminUser = { uid: 'mock_admin_uid', username: username || 'admin', role: 'admin' };
+    sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(adminUser));
+    sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
+    return adminUser;
   }
 
   async logoutAdmin() {
@@ -212,34 +212,23 @@ class MockDB {
 
   async loginStep1(username, password) {
     const uname = (username || '').toLowerCase().trim();
-    let valid = false;
-    let role = 'staff';
 
-    const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
-
-    if (uname === 'admin' || uname === 'praveen192005@gmail.com' || uname === 'sivapraveen339@gmail.com') {
-      const storedPass = localStorage.getItem(MOCK_ADMIN_PASS_KEY) || 'admin123';
-      if (password === storedPass || isMasterPass) { valid = true; role = 'admin'; }
-    } else if (uname === 'cashier') {
-      const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
-      if (password === storedPass || isMasterPass) { valid = true; role = 'cashier'; }
-    } else if (uname === 'staff' || uname === 'staffs') {
-      const storedPass = localStorage.getItem('bb_stock_mock_staff_pass') || 'staff123';
-      if (password === storedPass || isMasterPass) { valid = true; role = 'staff'; }
+    // Strict whitelist: only these exact usernames are allowed
+    const ALLOWED = ['praveenbrainyblooms@gmail.com', 'admin', 'staff', 'cashier', 'staffs', 'accounts'];
+    if (!ALLOWED.includes(uname)) {
+      throw new Error('Access denied. Invalid credentials.');
     }
 
-    if (!valid) {
-      throw new Error(`Incorrect credentials for ${username}`);
+    if (password !== 'praveenBBLI@!@#$%^&*()') {
+      throw new Error('Incorrect password. Please check your credentials.');
     }
 
+    const role = (uname === 'cashier' || uname === 'accounts') ? 'cashier' : ((uname === 'staff' || uname === 'staffs') ? 'staff' : 'admin');
     const user = { uid: `mock_${role}_uid`, username: uname, role: role };
-    // NOTE: loginStep1 is ONLY for gateway credential verification and routing.
-    // It does NOT set explicit portal auth flags.
-    // Each portal (admin.html, staff.html, accounts.html) requires its OWN login.
     this.mockPendingUser = user;
     return {
       success: true,
-      message: 'Login successful!',
+      message: 'Credentials verified!',
       username: uname,
       role: role,
       data: user
@@ -247,26 +236,21 @@ class MockDB {
   }
 
   async verifyOtp(username, otp) {
-    const user = this.mockPendingUser || { uid: `mock_user_uid`, username: (username || '').toLowerCase(), role: 'admin' };
-    if (user.role === 'admin') {
-      sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-    } else if (user.role === 'cashier') {
-      sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
-    } else {
-      sessionStorage.setItem(USER_KEY, JSON.stringify(user));
-      sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
+    const ans = (otp || '').toString().trim();
+    if (ans !== 'BesT') {
+      throw new Error('Incorrect security answer! Access denied.');
     }
+    // Gateway only verifies identity. Do NOT set portal auth flags here.
+    // Each portal (admin.html, staff.html, accounts.html) requires its own separate login.
+    const user = this.mockPendingUser || { uid: `mock_user_uid`, username: (username || '').toLowerCase(), role: 'admin' };
     return user;
   }
 
   async loginCashier(username, password) {
     const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
     const uname = (username || '').toLowerCase().trim();
-    const isMasterPass = (password === 'praveenBBLI@!@#$%^&*()');
     const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account');
-    const isValidPass = (password === storedPass || isMasterPass);
+    const isValidPass = (password === storedPass);
     if (isCashierUser && isValidPass) {
       const cashierUser = { uid: 'mock_cashier_uid', username: username || 'accounts_cashier', role: 'cashier' };
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
@@ -346,7 +330,7 @@ class MockDB {
     return this.data.students;
   }
 
-  async addStudent(name, branch, gender, grade) {
+  async addStudent(name, branch, gender, grade, fatherName = '', admissionNo = '') {
     this.load();
     const newStudent = {
       id: 'stud_' + Date.now(),
@@ -354,6 +338,8 @@ class MockDB {
       branch,
       gender,
       grade,
+      fatherName: fatherName || '',
+      admissionNo: admissionNo || '',
       sets: [
         { setNumber: 1, uniformType: 'Yellow Uniform', status: 'Not Issued', topSize: '', bottomSize: '', issueDate: null, reasonIfMissing: '' },
         { setNumber: 2, uniformType: 'Red Uniform', status: 'Not Issued', topSize: '', bottomSize: '', issueDate: null, reasonIfMissing: '' },
@@ -510,18 +496,34 @@ class MockDB {
     return this.data.bills;
   }
 
-  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator) {
+  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '') {
     this.load();
     if (!this.data.bills) {
       this.data.bills = [];
     }
+
+    let maxNum = 0;
+    this.data.bills.forEach(b => {
+      const match = (b.id || b.billId || '').match(/^BILL-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num < 1000000000 && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+    const billId = `BILL-${maxNum + 1}`;
+
     const newBill = {
-      id: 'BILL-' + Date.now(),
+      id: billId,
+      billId: billId,
       studentId,
       studentName,
       grade,
       branch,
       gender,
+      fatherName: fatherName || '',
+      admissionNo: admissionNo || '',
       feeAmount: parseFloat(feeAmount),
       status: 'Pending',
       createdAt: new Date().toISOString(),
@@ -661,12 +663,10 @@ class MongoApiDB {
         headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
         ...options,
       });
-      if (!res.ok) {
-        throw new Error(`API Request failed with status ${res.status}`);
-      }
       const data = await res.json();
-      if (data.success === false) {
-        throw new Error(data.message || 'API Request failed');
+      if (!res.ok || data.success === false) {
+        // Throw the actual backend message so the UI can display it properly
+        throw new Error(data.message || `Request failed with status ${res.status}`);
       }
       return data;
     } catch (err) {
@@ -759,13 +759,20 @@ class MongoApiDB {
         method: 'POST',
         body: JSON.stringify({ username, password })
       });
-      const userPayload = data.data || { uid: 'user_uid', username, role: data.role || 'staff' };
-      const role = (data.role || userPayload.role || 'staff').toLowerCase();
-      // NOTE: loginStep1 is ONLY for gateway credential verification and routing.
-      // It does NOT set explicit portal auth flags.
-      // Each portal (admin.html, staff.html, accounts.html) requires its OWN login.
+      const userPayload = data.data || { uid: 'user_uid', username, role: data.role || 'admin' };
+      const role = (data.role || userPayload.role || 'admin').toLowerCase();
       return { ...data, role };
     } catch (err) {
+      // Re-throw specific auth errors (wrong email, wrong password) so they display to user
+      if (err.message && (
+        err.message.includes('Access denied') ||
+        err.message.includes('Incorrect password') ||
+        err.message.includes('credentials') ||
+        err.message.includes('required')
+      )) {
+        throw err;
+      }
+      // Only fall back to mock for network/connection errors
       return this.fallbackMock.loginStep1(username, password);
     }
   }
@@ -777,19 +784,20 @@ class MongoApiDB {
         body: JSON.stringify({ username, otp })
       });
       const userPayload = data.data;
-      // Write only to role-specific key in sessionStorage
-      if (userPayload.role === 'admin') {
-        sessionStorage.setItem(ADMIN_USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_admin_auth', 'true');
-      } else if (userPayload.role === 'cashier') {
-        sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_cashier_auth', 'true');
-      } else {
-        sessionStorage.setItem(USER_KEY, JSON.stringify(userPayload));
-        sessionStorage.setItem('bb_stock_explicit_staff_auth', 'true');
-      }
+      if (!userPayload) throw new Error('Verification failed. No user data returned.');
+      // Gateway only verifies identity — do NOT set portal auth flags here.
+      // Each portal (admin.html, staff.html, accounts.html) requires its own separate login.
       return userPayload;
     } catch (err) {
+      // Re-throw security question failures — do NOT fall back to mock
+      if (err.message && (
+        err.message.includes('security answer') ||
+        err.message.includes('Access denied') ||
+        err.message.includes('Incorrect')
+      )) {
+        throw err;
+      }
+      // Only fall back for network errors
       return this.fallbackMock.verifyOtp(username, otp);
     }
   }
@@ -895,15 +903,15 @@ class MongoApiDB {
     }
   }
 
-  async addStudent(name, branch, gender, grade) {
+  async addStudent(name, branch, gender, grade, fatherName = '', admissionNo = '') {
     try {
       const res = await this.request('/students', {
         method: 'POST',
-        body: JSON.stringify({ name, branch, gender, grade })
+        body: JSON.stringify({ name, branch, gender, grade, fatherName, admissionNo })
       });
       return res.data;
     } catch (err) {
-      return this.fallbackMock.addStudent(name, branch, gender, grade);
+      return this.fallbackMock.addStudent(name, branch, gender, grade, fatherName, admissionNo);
     }
   }
 
@@ -975,15 +983,15 @@ class MongoApiDB {
     }
   }
 
-  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator) {
+  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '') {
     try {
       const res = await this.request('/bills', {
         method: 'POST',
-        body: JSON.stringify({ studentId, studentName, grade, branch, gender, feeAmount, amount: feeAmount, operator, cashier: operator })
+        body: JSON.stringify({ studentId, studentName, grade, branch, gender, feeAmount, amount: feeAmount, operator, cashier: operator, fatherName, admissionNo })
       });
       return res.data;
     } catch (err) {
-      return this.fallbackMock.createBill(studentId, studentName, grade, branch, gender, feeAmount, operator);
+      return this.fallbackMock.createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName, admissionNo);
     }
   }
 

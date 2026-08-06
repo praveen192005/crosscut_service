@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CROSS CUT ENTERPRISES - Management Control Portal (Admin)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👔</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👔</text></svg>">
   <link rel="stylesheet" href="style.css?v=20260804">
   <style>
     /* Force override background - remove any cached image background */
@@ -93,6 +95,12 @@
             <a href="#">
               <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
               Student Directory
+            </a>
+          </li>
+          <li class="nav-item" data-view="uniform-report">
+            <a href="#">
+              <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              Uniform Issuance Report
             </a>
           </li>
           <li class="nav-item" data-view="logs">
@@ -334,7 +342,9 @@
               <table class="stock-table">
                 <thead>
                   <tr>
+                    <th>Admission No</th>
                     <th>Student Name</th>
+                    <th>Father Name</th>
                     <th>Branch</th>
                     <th>Gender</th>
                     <th>Grade / Class</th>
@@ -345,6 +355,128 @@
                   </tr>
                 </thead>
                 <tbody id="admin-student-table-body">
+                  <!-- JS populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- VIEW C1: UNIFORM ISSUANCE REPORT & ANALYTICS -->
+        <!-- ======================================================== -->
+        <section id="view-uniform-report" class="view-section">
+          
+          <!-- Filter Controls Glass Panel -->
+          <div class="glass-panel" style="margin-bottom: 20px;">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+              <div>
+                <h3>📊 Uniform Issuance Analytics & Recipient Report</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary);">Filter uniform distribution records by Year, Month, Specific Date, or Issuance level</p>
+              </div>
+              <button id="btn-export-report-csv" class="btn btn-primary btn-sm">📥 Export Recipient CSV</button>
+            </div>
+
+            <!-- Filter Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 12px; align-items: end;">
+              <div>
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">📅 Year</label>
+                <select id="report-filter-year" class="input-ctrl" style="font-size: 0.85rem; height: 36px;">
+                  <option value="ALL">ALL Years</option>
+                  <option value="2026">2026</option>
+                  <option value="2025">2025</option>
+                  <option value="2024">2024</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">🗓️ Month</label>
+                <select id="report-filter-month" class="input-ctrl" style="font-size: 0.85rem; height: 36px;">
+                  <option value="ALL">ALL Months</option>
+                  <option value="01">01 - January</option>
+                  <option value="02">02 - February</option>
+                  <option value="03">03 - March</option>
+                  <option value="04">04 - April</option>
+                  <option value="05">05 - May</option>
+                  <option value="06">06 - June</option>
+                  <option value="07">07 - July</option>
+                  <option value="08">08 - August</option>
+                  <option value="09">09 - September</option>
+                  <option value="10">10 - October</option>
+                  <option value="11">11 - November</option>
+                  <option value="12">12 - December</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">🎯 Specific Date</label>
+                <div style="display: flex; gap: 6px;">
+                  <input type="date" id="report-filter-date" class="input-ctrl" style="font-size: 0.85rem; height: 36px;">
+                  <button id="btn-clear-report-date" class="btn btn-outline btn-sm" title="Clear Date" style="padding: 0 10px; height: 36px;">✕</button>
+                </div>
+              </div>
+              <div>
+                <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 4px;">👕 Issuance Level</label>
+                <select id="report-filter-status" class="input-ctrl" style="font-size: 0.85rem; height: 36px;">
+                  <option value="ALL">ALL Uniform Recipients</option>
+                  <option value="FULL">Fully Issued (All 3 Sets)</option>
+                  <option value="PARTIAL">Partially Issued (1-2 Sets)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recipient Statistics KPI Cards Deck -->
+          <div class="kpi-grid" style="margin-bottom: 20px;">
+            <div class="glass-panel kpi-card kpi-blue">
+              <div class="kpi-data">
+                <span class="kpi-label">Students Received</span>
+                <span class="kpi-value" id="report-kpi-students">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">👥</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-green">
+              <div class="kpi-data">
+                <span class="kpi-label">Fully Issued Students</span>
+                <span class="kpi-value" id="report-kpi-full">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">✨</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-orange">
+              <div class="kpi-data">
+                <span class="kpi-label">Partially Issued Students</span>
+                <span class="kpi-value" id="report-kpi-partial">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">📦</div>
+            </div>
+            <div class="glass-panel kpi-card kpi-purple">
+              <div class="kpi-data">
+                <span class="kpi-label">Total Sets Delivered</span>
+                <span class="kpi-value" id="report-kpi-total-sets">0</span>
+              </div>
+              <div class="kpi-icon-wrapper">👕</div>
+            </div>
+          </div>
+
+          <!-- Recipient Students Table -->
+          <div class="glass-panel">
+            <div class="table-responsive">
+              <table class="stock-table">
+                <thead>
+                  <tr>
+                    <th>Admission No</th>
+                    <th>Student Name</th>
+                    <th>Father Name</th>
+                    <th>Grade & Section</th>
+                    <th>Branch</th>
+                    <th>Gender</th>
+                    <th>Set 1 (Yellow)</th>
+                    <th>Set 2 (Red)</th>
+                    <th>Set 3 (Sports)</th>
+                    <th>Issuance Status</th>
+                    <th>Latest Issue Date</th>
+                  </tr>
+                </thead>
+                <tbody id="report-table-body">
                   <!-- JS populated -->
                 </tbody>
               </table>

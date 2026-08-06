@@ -40,6 +40,16 @@ const studentSchema = new mongoose.Schema(
       required: [true, 'Grade/Class is required'],
       trim: true,
     },
+    fatherName: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    admissionNo: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     sets: [uniformSetSchema],
   },
   {

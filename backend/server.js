@@ -50,6 +50,11 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
 
+// Favicon and touch icon handler (prevents 404 errors in server log)
+app.get(['/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'], (req, res) => {
+  res.status(204).end();
+});
+
 // Mount API Routes
 app.use('/api/stocks', stockRoutes);
 app.use('/api/students', studentRoutes);

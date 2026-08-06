@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CROSS CUT ENTERPRISES - Uniform Billing Portal (Accounts)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>">
   <link rel="stylesheet" href="style.css?v=20260804">
   <style>
     /* Force override background - remove any cached image background */
@@ -154,6 +156,41 @@
             
             <!-- Left Side: Directory search listing -->
             <div class="glass-panel student-list-container">
+              <!-- Grade & Section Filter Dropdowns -->
+              <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                  <label style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 2px;">Grade / Class</label>
+                  <select id="billing-grade-filter" class="input-ctrl" style="font-size: 0.78rem; height: 32px; padding: 2px 6px;">
+                    <option value="ALL">ALL Grades</option>
+                    <option value="Junior KG">Junior KG</option>
+                    <option value="Senior KG">Senior KG</option>
+                    <option value="I Std">I Std</option>
+                    <option value="II Std">II Std</option>
+                    <option value="III Std">III Std</option>
+                    <option value="IV Std">IV Std</option>
+                    <option value="V Std">V Std</option>
+                    <option value="VI Std">VI Std</option>
+                    <option value="VII Std">VII Std</option>
+                    <option value="VIII Std">VIII Std</option>
+                    <option value="IX Std">IX Std</option>
+                    <option value="X Std">X Std</option>
+                    <option value="XI Std">XI Std</option>
+                    <option value="XII Std">XII Std</option>
+                  </select>
+                </div>
+                <div style="width: 100px;">
+                  <label style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 2px;">Section</label>
+                  <select id="billing-section-filter" class="input-ctrl" style="font-size: 0.78rem; height: 32px; padding: 2px 6px;">
+                    <option value="ALL">ALL Sec</option>
+                    <option value="B">Section B</option>
+                    <option value="R">Section R</option>
+                    <option value="A">Section A</option>
+                    <option value="I">Section I</option>
+                    <option value="N">Section N</option>
+                  </select>
+                </div>
+              </div>
+
               <div class="search-box-wrapper" style="margin-bottom: 12px;">
                 <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="billing-search-input" class="input-ctrl" 
@@ -190,6 +227,8 @@
                   <div class="profile-title">
                     <h3 id="billing-profile-name">Student Name</h3>
                     <div class="profile-meta">
+                      <span id="billing-profile-adm-no">Adm: N/A</span>
+                      <span id="billing-profile-father-name">Father: N/A</span>
                       <span id="billing-profile-branch">BBLI</span>
                       <span id="billing-profile-gender">Boys</span>
                       <span id="billing-profile-grade">Grade 5</span>

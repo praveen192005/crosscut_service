@@ -68,6 +68,7 @@ const DOM = {
   get viewLogs() { return document.getElementById('view-logs'); },
   get viewSettings() { return document.getElementById('view-settings'); },
   get viewAdminStudents() { return document.getElementById('view-admin-students'); },
+  get viewUniformReport() { return document.getElementById('view-uniform-report'); },
   get viewBilling() { return document.getElementById('view-billing'); },
   get adminStudentSearchInput() { return document.getElementById('admin-student-search-input'); },
   get adminStudentTableBody() { return document.getElementById('admin-student-table-body'); },
@@ -150,6 +151,7 @@ function navigateTo(viewId) {
     else if (viewId === 'logs') DOM.viewTitle.textContent = 'Audit Transaction Logs';
     else if (viewId === 'settings') DOM.viewTitle.textContent = 'Portal Settings';
     else if (viewId === 'admin-students') DOM.viewTitle.textContent = 'Student Directory';
+    else if (viewId === 'uniform-report') DOM.viewTitle.textContent = 'Uniform Issuance Report';
     else if (viewId === 'billing') DOM.viewTitle.textContent = 'Billing & Accounts';
   }
 
@@ -364,6 +366,8 @@ async function refreshData() {
         renderLogsData(filteredTransactions);
       } else if (state.activeView === 'admin-students') {
         renderAdminStudentsData(filteredStudents);
+      } else if (state.activeView === 'uniform-report') {
+        renderUniformReportData(filteredStudents, filteredTransactions);
       } else if (state.activeView === 'billing') {
         renderAdminBillingData(filteredBills);
       }
@@ -620,6 +624,8 @@ function renderSelectedStudentDetail() {
 
   const s = state.selectedStudent;
   document.getElementById('profile-name').textContent = s.name;
+  if (document.getElementById('profile-adm-no')) document.getElementById('profile-adm-no').textContent = s.admissionNo ? `Adm: ${s.admissionNo}` : 'Adm: N/A';
+  if (document.getElementById('profile-father-name')) document.getElementById('profile-father-name').textContent = s.fatherName ? `Father: ${s.fatherName}` : 'Father: N/A';
   document.getElementById('profile-branch').textContent = s.branch;
   document.getElementById('profile-gender').textContent = s.gender;
   document.getElementById('profile-grade').textContent = s.grade;
@@ -1111,7 +1117,9 @@ function renderStudentsData(students) {
       }).join(' ');
 
       tr.innerHTML = `
+        <td><strong>${s.admissionNo || '-'}</strong></td>
         <td><strong>${s.name}</strong></td>
+        <td>${s.fatherName || '-'}</td>
         <td>${s.branch}</td>
         <td>${s.gender}</td>
         <td><span class="badge badge-neutral">${s.grade}</span></td>
@@ -1157,8 +1165,16 @@ if (document.getElementById('btn-add-student')) {
     const modalBody = `
       <form id="new-student-form">
         <div class="form-group">
+          <label for="new-student-admission-no">Admission No</label>
+          <input type="text" id="new-student-admission-no" class="input-ctrl" placeholder="e.g. ADM-2026-001">
+        </div>
+        <div class="form-group">
           <label for="new-student-name">Student Full Name</label>
           <input type="text" id="new-student-name" class="input-ctrl" placeholder="e.g. Kabir Sharma" required>
+        </div>
+        <div class="form-group">
+          <label for="new-student-father-name">Father Name</label>
+          <input type="text" id="new-student-father-name" class="input-ctrl" placeholder="e.g. Rajesh Sharma">
         </div>
         <div class="form-group">
           <label for="new-student-branch">Branch</label>
@@ -1198,7 +1214,9 @@ if (document.getElementById('btn-add-student')) {
 }
 
 async function submitNewStudent() {
+  const admissionNo = document.getElementById('new-student-admission-no').value.trim();
   const name = document.getElementById('new-student-name').value.trim();
+  const fatherName = document.getElementById('new-student-father-name').value.trim();
   const branch = document.getElementById('new-student-branch').value;
   const gender = document.getElementById('new-student-gender').value;
   const standard = document.getElementById('new-student-standard').value;
@@ -1211,7 +1229,7 @@ async function submitNewStudent() {
   }
 
   try {
-    const newStud = await db.addStudent(name, branch, gender, grade);
+    const newStud = await db.addStudent(name, branch, gender, grade, fatherName, admissionNo);
     showToast(`Registered student: ${name}`, 'success');
     closeModal();
     state.selectedStudent = newStud;
@@ -1397,7 +1415,9 @@ function renderAdminStudentsData(students) {
       };
 
       tr.innerHTML = `
+        <td><strong>${s.admissionNo || '-'}</strong></td>
         <td><strong>${s.name}</strong></td>
+        <td>${s.fatherName || '-'}</td>
         <td>${s.branch}</td>
         <td>${s.gender}</td>
         <td><span class="badge badge-neutral">${s.grade}</span></td>
@@ -1529,6 +1549,200 @@ function renderAdminBillingData(bills) {
 
     DOM.adminBillingTableBody.appendChild(tr);
   });
+}
+
+// ----------------------------------------------------
+// Admin Uniform Issuance Report & Analytics
+// ----------------------------------------------------
+function renderUniformReportData(students, transactions) {
+  const tableBody = document.getElementById('report-table-body');
+  if (!tableBody) return;
+
+  const yearFilter = document.getElementById('report-filter-year') ? document.getElementById('report-filter-year').value : 'ALL';
+  const monthFilter = document.getElementById('report-filter-month') ? document.getElementById('report-filter-month').value : 'ALL';
+  const dateFilter = document.getElementById('report-filter-date') ? document.getElementById('report-filter-date').value : '';
+  const statusFilter = document.getElementById('report-filter-status') ? document.getElementById('report-filter-status').value : 'ALL';
+
+  const recipientList = [];
+
+  students.forEach(s => {
+    const sets = s.sets || [];
+    const issuedSets = sets.filter(st => st.status === 'Issued');
+    if (issuedSets.length === 0) return;
+
+    let matchesDate = false;
+    let latestDate = null;
+
+    issuedSets.forEach(st => {
+      let stDateStr = st.issueDate;
+      if (!stDateStr && transactions) {
+        const tx = transactions.find(t => t.studentId === s.id && t.type === 'Issue');
+        if (tx) stDateStr = tx.timestamp || tx.createdAt;
+      }
+      if (!stDateStr) stDateStr = s.createdAt || new Date().toISOString();
+
+      const stDate = new Date(stDateStr);
+      if (!latestDate || stDate > latestDate) {
+        latestDate = stDate;
+      }
+
+      const stYYYY = stDate.getFullYear().toString();
+      const stMM = String(stDate.getMonth() + 1).padStart(2, '0');
+      const stYYYYMMDD = `${stYYYY}-${stMM}-${String(stDate.getDate()).padStart(2, '0')}`;
+
+      if (dateFilter) {
+        if (stYYYYMMDD === dateFilter) matchesDate = true;
+      } else {
+        const matchY = (yearFilter === 'ALL' || stYYYY === yearFilter);
+        const matchM = (monthFilter === 'ALL' || stMM === monthFilter);
+        if (matchY && matchM) matchesDate = true;
+      }
+    });
+
+    if (!matchesDate) return;
+
+    const issuedCount = issuedSets.length;
+    const isFull = issuedCount === 3;
+
+    if (statusFilter === 'FULL' && !isFull) return;
+    if (statusFilter === 'PARTIAL' && isFull) return;
+
+    recipientList.push({
+      student: s,
+      issuedCount,
+      isFull,
+      latestDate: latestDate ? latestDate.toLocaleString() : 'N/A',
+      issuedSets
+    });
+  });
+
+  // Calculate KPIs
+  const totalStudents = recipientList.length;
+  const fullStudents = recipientList.filter(r => r.isFull).length;
+  const partialStudents = totalStudents - fullStudents;
+  const totalSets = recipientList.reduce((sum, r) => sum + r.issuedCount, 0);
+
+  if (document.getElementById('report-kpi-students')) document.getElementById('report-kpi-students').textContent = totalStudents;
+  if (document.getElementById('report-kpi-full')) document.getElementById('report-kpi-full').textContent = fullStudents;
+  if (document.getElementById('report-kpi-partial')) document.getElementById('report-kpi-partial').textContent = partialStudents;
+  if (document.getElementById('report-kpi-total-sets')) document.getElementById('report-kpi-total-sets').textContent = totalSets;
+
+  tableBody.innerHTML = '';
+  if (recipientList.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="11" style="text-align: center; color: var(--text-muted); padding: 20px;">No uniform recipients found for the selected date criteria.</td></tr>`;
+    return;
+  }
+
+  recipientList.sort((a, b) => a.student.name.localeCompare(b.student.name));
+
+  recipientList.forEach(r => {
+    const s = r.student;
+    const tr = document.createElement('tr');
+
+    const getSetBadge = (setNum) => {
+      const set = s.sets && s.sets[setNum - 1] ? s.sets[setNum - 1] : null;
+      if (!set || set.status !== 'Issued') {
+        return `<span class="badge badge-neutral">Not Issued</span>`;
+      }
+      const sizes = `(T:${set.topSize || '?'}, B:${set.bottomSize || '?'})`;
+      return `<span class="badge badge-success">Issued ${sizes}</span>`;
+    };
+
+    const statusBadge = r.isFull
+      ? `<span class="badge badge-success">✨ Fully Issued (3/3)</span>`
+      : `<span class="badge badge-warning">📦 Partially Issued (${r.issuedCount}/3)</span>`;
+
+    tr.innerHTML = `
+      <td><strong>${s.admissionNo || '-'}</strong></td>
+      <td><strong>${s.name}</strong></td>
+      <td>${s.fatherName || '-'}</td>
+      <td><span class="badge badge-neutral">${s.grade}</span></td>
+      <td>${s.branch}</td>
+      <td>${s.gender}</td>
+      <td>${getSetBadge(1)}</td>
+      <td>${getSetBadge(2)}</td>
+      <td>${getSetBadge(3)}</td>
+      <td>${statusBadge}</td>
+      <td><small>${r.latestDate}</small></td>
+    `;
+
+    tableBody.appendChild(tr);
+  });
+}
+
+function exportUniformReportCSV() {
+  const tableBody = document.getElementById('report-table-body');
+  if (!tableBody) return;
+
+  const yearFilter = document.getElementById('report-filter-year') ? document.getElementById('report-filter-year').value : 'ALL';
+  const monthFilter = document.getElementById('report-filter-month') ? document.getElementById('report-filter-month').value : 'ALL';
+  const dateFilter = document.getElementById('report-filter-date') ? document.getElementById('report-filter-date').value : '';
+
+  const rows = [];
+  rows.push(['Admission No', 'Student Name', 'Father Name', 'Grade & Section', 'Branch', 'Gender', 'Set 1 Yellow Status', 'Set 2 Red Status', 'Set 3 Sports Status', 'Overall Issuance Status', 'Issued Sets Count', 'Latest Issue Date'].join(','));
+
+  const students = state.activeBranch === 'ALL' ? state.students : state.students.filter(s => s.branch === state.activeBranch);
+
+  students.forEach(s => {
+    const sets = s.sets || [];
+    const issuedSets = sets.filter(st => st.status === 'Issued');
+    if (issuedSets.length === 0) return;
+
+    let matchesDate = false;
+    let latestDate = null;
+
+    issuedSets.forEach(st => {
+      let stDateStr = st.issueDate || s.createdAt || new Date().toISOString();
+      const stDate = new Date(stDateStr);
+      if (!latestDate || stDate > latestDate) latestDate = stDate;
+
+      const stYYYY = stDate.getFullYear().toString();
+      const stMM = String(stDate.getMonth() + 1).padStart(2, '0');
+      const stYYYYMMDD = `${stYYYY}-${stMM}-${String(stDate.getDate()).padStart(2, '0')}`;
+
+      if (dateFilter) {
+        if (stYYYYMMDD === dateFilter) matchesDate = true;
+      } else {
+        const matchY = (yearFilter === 'ALL' || stYYYY === yearFilter);
+        const matchM = (monthFilter === 'ALL' || stMM === monthFilter);
+        if (matchY && matchM) matchesDate = true;
+      }
+    });
+
+    if (!matchesDate) return;
+
+    const set1 = sets[0] && sets[0].status === 'Issued' ? `Issued (T:${sets[0].topSize}, B:${sets[0].bottomSize})` : 'Not Issued';
+    const set2 = sets[1] && sets[1].status === 'Issued' ? `Issued (T:${sets[1].topSize}, B:${sets[1].bottomSize})` : 'Not Issued';
+    const set3 = sets[2] && sets[2].status === 'Issued' ? `Issued (T:${sets[2].topSize}, B:${sets[2].bottomSize})` : 'Not Issued';
+
+    rows.push([
+      `"${s.admissionNo || ''}"`,
+      `"${s.name.replace(/"/g, '""')}"`,
+      `"${(s.fatherName || '').replace(/"/g, '""')}"`,
+      `"${s.grade}"`,
+      s.branch,
+      s.gender,
+      `"${set1}"`,
+      `"${set2}"`,
+      `"${set3}"`,
+      issuedSets.length === 3 ? 'Fully Issued' : 'Partially Issued',
+      issuedSets.length,
+      latestDate ? latestDate.toISOString().slice(0, 10) : ''
+    ].join(','));
+  });
+
+  if (rows.length <= 1) {
+    showToast('No recipient data matching selected filters to export.', 'error');
+    return;
+  }
+
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.setAttribute('href', url);
+  a.setAttribute('download', `uniform_recipients_report_${dateFilter || (yearFilter + '_' + monthFilter)}.csv`);
+  a.click();
+  showToast('Uniform Recipients CSV Report exported successfully.', 'success');
 }
 
 function exportBillingCSV() {
@@ -2109,14 +2323,16 @@ async function handleChangePasswordSubmit(e) {
   const confirmNewPass = document.getElementById('change-new-password-confirm').value;
 
   if (newPass !== confirmNewPass) {
-    showToast('Confirm password match check failed.', 'error');
+    showToast('New passwords do not match.', 'error');
     return;
   }
 
-  const submitBtn = e.target.querySelector('button');
-  const originalText = submitBtn.innerHTML;
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = 'Updating...';
+  const submitBtn = e.target ? e.target.querySelector('button') : null;
+  const originalText = submitBtn ? submitBtn.innerHTML : 'Update Password 🔑';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Updating...';
+  }
 
   try {
     await db.changeAdminPassword(oldPass, newPass);
@@ -2127,12 +2343,12 @@ async function handleChangePasswordSubmit(e) {
   } catch (error) {
     showToast(error.message || 'Password update failed.', 'error');
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
   }
 }
-
-
 
 async function handleChangeStaffPasswordSubmit(e) {
   e.preventDefault();
@@ -2141,14 +2357,16 @@ async function handleChangeStaffPasswordSubmit(e) {
   const confirmNewPass = document.getElementById('change-staff-new-password-confirm').value;
 
   if (newPass !== confirmNewPass) {
-    showToast('Confirm staff password match check failed.', 'error');
+    showToast('New passwords do not match.', 'error');
     return;
   }
 
-  const submitBtn = e.target.querySelector('button');
-  const originalText = submitBtn.innerHTML;
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = 'Updating...';
+  const submitBtn = e.target ? e.target.querySelector('button') : null;
+  const originalText = submitBtn ? submitBtn.innerHTML : 'Update Staff Password 🔑';
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Updating...';
+  }
 
   try {
     await db.changeStaffPassword(oldPass, newPass);
@@ -2159,8 +2377,10 @@ async function handleChangeStaffPasswordSubmit(e) {
   } catch (error) {
     showToast(error.message || 'Staff password update failed.', 'error');
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = originalText;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
   }
 }
 
@@ -2301,13 +2521,13 @@ function handleExportStudents() {
     return;
   }
   const headers = [
-    'Student ID', 'Student Name', 'Branch', 'Gender', 'Grade / Class',
+    'Student ID', 'Admission No', 'Student Name', 'Father Name', 'Branch', 'Gender', 'Grade / Class',
     'Set 1 Name', 'Set 1 Status', 'Set 1 Top Size', 'Set 1 Bottom Size',
     'Set 2 Name', 'Set 2 Status', 'Set 2 Top Size', 'Set 2 Bottom Size',
     'Set 3 Name', 'Set 3 Status', 'Set 3 Top Size', 'Set 3 Bottom Size', 'Set 3 Color'
   ];
   const rows = state.students.map(s => {
-    const row = [s.id, s.name, s.branch, s.gender, s.grade];
+    const row = [s.id, s.admissionNo || '', s.name, s.fatherName || '', s.branch, s.gender, s.grade];
     for (let i = 0; i < 3; i++) {
       const set = s.sets && s.sets[i] ? s.sets[i] : {};
       row.push(
@@ -2564,6 +2784,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     const btnExportLogs = document.getElementById('btn-export-transactions-csv');
     if (btnExportLogs) btnExportLogs.addEventListener('click', handleExportTransactions);
 
+    const btnExportReport = document.getElementById('btn-export-report-csv');
+    if (btnExportReport) btnExportReport.addEventListener('click', exportUniformReportCSV);
+
+    // Uniform Report Filter Controls
+    ['report-filter-year', 'report-filter-month', 'report-filter-date', 'report-filter-status'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', () => refreshData());
+    });
+
+    const btnClearReportDate = document.getElementById('btn-clear-report-date');
+    if (btnClearReportDate) {
+      btnClearReportDate.addEventListener('click', () => {
+        const dateEl = document.getElementById('report-filter-date');
+        if (dateEl) {
+          dateEl.value = '';
+          refreshData();
+        }
+      });
+    }
+
     // Student Directory Search
     const adminStudentSearch = document.getElementById('admin-student-search-input');
     if (adminStudentSearch) {
@@ -2582,6 +2822,54 @@ window.addEventListener('DOMContentLoaded', async () => {
     const changeStaffPassForm = document.getElementById('change-staff-password-form');
     if (changeStaffPassForm) {
       changeStaffPassForm.addEventListener('submit', handleChangeStaffPasswordSubmit);
+    }
+
+    // Reset Password Buttons (Admin, Cashier, Staff)
+    const masterPassInput = document.getElementById('reset-master-password');
+    const btnResetAdmin = document.getElementById('btn-reset-admin-pass');
+    const btnResetCashier = document.getElementById('btn-reset-cashier-pass');
+    const btnResetStaff = document.getElementById('btn-reset-staff-pass');
+
+    if (btnResetAdmin) {
+      btnResetAdmin.addEventListener('click', async () => {
+        const masterPass = masterPassInput ? masterPassInput.value : '';
+        if (!masterPass) { showToast('Master Password is required to reset Admin password.', 'error'); return; }
+        try {
+          await db.resetPassword('admin', masterPass);
+          showToast('Admin password reset to default (admin123).', 'success');
+          if (masterPassInput) masterPassInput.value = '';
+        } catch (err) {
+          showToast(err.message || 'Reset failed.', 'error');
+        }
+      });
+    }
+
+    if (btnResetCashier) {
+      btnResetCashier.addEventListener('click', async () => {
+        const masterPass = masterPassInput ? masterPassInput.value : '';
+        if (!masterPass) { showToast('Master Password is required to reset Cashier password.', 'error'); return; }
+        try {
+          await db.resetPassword('cashier', masterPass);
+          showToast('Cashier password reset to default (cashier123).', 'success');
+          if (masterPassInput) masterPassInput.value = '';
+        } catch (err) {
+          showToast(err.message || 'Reset failed.', 'error');
+        }
+      });
+    }
+
+    if (btnResetStaff) {
+      btnResetStaff.addEventListener('click', async () => {
+        const masterPass = masterPassInput ? masterPassInput.value : '';
+        if (!masterPass) { showToast('Master Password is required to reset Staff password.', 'error'); return; }
+        try {
+          await db.resetPassword('staff', masterPass);
+          showToast('Staff password reset to default (staff123).', 'success');
+          if (masterPassInput) masterPassInput.value = '';
+        } catch (err) {
+          showToast(err.message || 'Reset failed.', 'error');
+        }
+      });
     }
     
     // Billing ledger filters

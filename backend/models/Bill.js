@@ -27,6 +27,14 @@ const billSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    fatherName: {
+      type: String,
+      default: '',
+    },
+    admissionNo: {
+      type: String,
+      default: '',
+    },
     feeAmount: {
       type: Number,
       required: true,

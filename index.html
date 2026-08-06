@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CROSS CUT ENTERPRISES - Unified Portal Gateway</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👔</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>👔</text></svg>">
   <link rel="stylesheet" href="style.css?v=20260803">
   <style>
     /* Force override background - remove any cached image background */
@@ -173,7 +175,7 @@
   </style>
 
   <script type="module">
-    import { db } from './db-config.js?v=20260805_final';
+    import { db } from './db-config.js?v=20260806_auth';
     window.db = db;
 
     // One-time migration: clear stale auth data from localStorage (old code wrote here, new code uses sessionStorage only)
@@ -196,7 +198,7 @@
       const passEl = document.getElementById('gateway-pass');
       if (!uidEl || !passEl) return false;
 
-      const username = uidEl.value.trim().toLowerCase();
+      const username = uidEl.value.trim();
       const password = passEl.value;
 
       if (!username || !password) {
@@ -204,7 +206,17 @@
         return false;
       }
 
+      // Get submit button reference FIRST (before any early returns)
       const btn = document.getElementById('gateway-submit-btn');
+
+      // Strict whitelist: only the authorized email or exact role usernames are allowed
+      const uname = username.toLowerCase();
+      const ALLOWED_USERNAMES = ['praveenbrainyblooms@gmail.com', 'admin', 'staff', 'cashier'];
+      if (!ALLOWED_USERNAMES.includes(uname)) {
+        alert('Access denied. Invalid credentials.');
+        return false;
+      }
+
       if (btn) {
         btn.disabled = true;
         btn.innerHTML = 'Authenticating...';
@@ -225,22 +237,20 @@
         }
 
         const role = (res.role || 'staff').toLowerCase();
-        const userPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
+        window.pendingUserPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
+        window.pendingUsername = res.username || username;
 
-        // Store user session for portal gateway identity only (NOT for portal auth)
-        const userStr = JSON.stringify(userPayload);
-        sessionStorage.setItem('bb_stock_current_user', userStr);
-
-        // Display Landing Page Hub (Step 3)
+        // Advance to STEP 2: Security Verification Question
         const step1 = document.getElementById('step1-container');
-        const step3 = document.getElementById('step3-container');
-        const badge = document.getElementById('portal-user-badge');
-        const gatewayContainer = document.querySelector('.gateway-container');
+        const step2 = document.getElementById('step2-container');
+        const ansInput = document.getElementById('security-answer-input');
 
-        if (badge) badge.textContent = userPayload.username || username;
         if (step1) step1.style.display = 'none';
-        if (step3) step3.style.display = 'block';
-        if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
+        if (step2) step2.style.display = 'block';
+        if (ansInput) {
+          ansInput.value = '';
+          ansInput.focus();
+        }
 
       } catch (err) {
         alert(err.message || 'Invalid Email/User ID or Password.');
@@ -254,29 +264,138 @@
       return false;
     }
 
+    async function verifySecurityQuestion(e) {
+      if (e) e.preventDefault();
+      const ansInput = document.getElementById('security-answer-input');
+      const ans = ansInput ? ansInput.value.trim() : '';
+
+      if (!ans) {
+        alert('Please enter your answer to the security question.');
+        return false;
+      }
+
+      const btn = document.getElementById('btn-verify-security');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Verifying Answer...';
+      }
+
+      try {
+      // Exact case-sensitive match: only 'BesT' is accepted — no other case variation
+      if (ans !== 'BesT') {
+        throw new Error('❌ Incorrect answer! Access denied. Verification failed.');
+      }
+
+        // Answer is correct (BesT) -> Verify with backend
+        if (window.db && typeof window.db.verifyOtp === 'function') {
+          await window.db.verifyOtp(window.pendingUsername || 'praveenbrainyblooms@gmail.com', 'BesT');
+        }
+
+        // Gateway verification complete — clear ALL portal auth flags.
+        // Each portal MUST ask for its own password separately.
+        sessionStorage.removeItem('bb_stock_explicit_admin_auth');
+        sessionStorage.removeItem('bb_stock_explicit_staff_auth');
+        sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
+        sessionStorage.removeItem('bb_stock_admin_user');
+        sessionStorage.removeItem('bb_stock_current_user');
+        sessionStorage.removeItem('bb_stock_cashier_user');
+
+        const userPayload = window.pendingUserPayload || { uid: 'user_admin', username: 'praveenbrainyblooms@gmail.com', role: 'admin' };
+        sessionStorage.setItem('bb_stock_gateway_verified', 'true');
+        sessionStorage.setItem('bb_stock_gateway_user', JSON.stringify(userPayload));
+
+        // Display Landing Page Hub (Step 3)
+        const step2 = document.getElementById('step2-container');
+        const step3 = document.getElementById('step3-container');
+        const badge = document.getElementById('portal-user-badge');
+        const gatewayContainer = document.querySelector('.gateway-container');
+
+        if (badge) badge.textContent = userPayload.username || window.pendingUsername || 'User';
+        if (step2) step2.style.display = 'none';
+        if (step3) step3.style.display = 'block';
+        if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
+
+      } catch (err) {
+        alert(err.message || 'Incorrect answer! Access denied.');
+        if (ansInput) {
+          ansInput.value = '';
+          ansInput.focus();
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = 'Verify & Proceed 🔓';
+        }
+      }
+
+      return false;
+    }
+
+    function cancelStep2() {
+      // Clear any partial gateway state
+      sessionStorage.removeItem('bb_stock_gateway_verified');
+      sessionStorage.removeItem('bb_stock_gateway_user');
+      window.pendingUserPayload = null;
+      window.pendingUsername = null;
+      window.pendingUsername = null;
+      const step1 = document.getElementById('step1-container');
+      const step2 = document.getElementById('step2-container');
+      if (step2) step2.style.display = 'none';
+      if (step1) step1.style.display = 'block';
+    }
+
     function handleSignoutHub() {
+      // Clear all session data completely
       localStorage.removeItem('bb_stock_current_user');
       sessionStorage.removeItem('bb_stock_current_user');
       localStorage.removeItem('bb_stock_admin_user');
       sessionStorage.removeItem('bb_stock_admin_user');
       localStorage.removeItem('bb_stock_cashier_user');
       sessionStorage.removeItem('bb_stock_cashier_user');
-
       sessionStorage.removeItem('bb_stock_explicit_admin_auth');
       sessionStorage.removeItem('bb_stock_explicit_staff_auth');
       sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
+      sessionStorage.removeItem('bb_stock_gateway_verified');
+      sessionStorage.removeItem('bb_stock_gateway_user');
+      window.pendingUserPayload = null;
+      window.pendingUsername = null;
 
       const step1 = document.getElementById('step1-container');
+      const step2 = document.getElementById('step2-container');
       const step3 = document.getElementById('step3-container');
       const gatewayContainer = document.querySelector('.gateway-container');
 
       if (step3) step3.style.display = 'none';
+      if (step2) step2.style.display = 'none';
       if (step1) step1.style.display = 'block';
       if (gatewayContainer) gatewayContainer.style.maxWidth = '500px';
+
+      // Clear input fields for security
+      const uidEl = document.getElementById('gateway-uid');
+      const passEl = document.getElementById('gateway-pass');
+      const ansEl = document.getElementById('security-answer-input');
+      if (uidEl) uidEl.value = '';
+      if (passEl) passEl.value = '';
+      if (ansEl) ansEl.value = '';
+    }
+
+    function clearPortalAuthAndGo(url) {
+      // Always clear portal session auth before entering any portal
+      // so each portal ALWAYS shows its own login screen
+      sessionStorage.removeItem('bb_stock_explicit_admin_auth');
+      sessionStorage.removeItem('bb_stock_explicit_staff_auth');
+      sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
+      sessionStorage.removeItem('bb_stock_admin_user');
+      sessionStorage.removeItem('bb_stock_current_user');
+      sessionStorage.removeItem('bb_stock_cashier_user');
+      window.location.href = url;
     }
 
     window.performDirectLogin = performDirectLogin;
+    window.verifySecurityQuestion = verifySecurityQuestion;
+    window.cancelStep2 = cancelStep2;
     window.handleSignoutHub = handleSignoutHub;
+    window.clearPortalAuthAndGo = clearPortalAuthAndGo;
   </script>
 </head>
 <body>
@@ -313,6 +432,30 @@
         </form>
       </div>
 
+      <!-- STEP 2: Security Verification Question -->
+      <div id="step2-container" style="display: none;">
+        <div style="text-align: center; margin-bottom: 10px;">
+          <span style="background: rgba(245, 158, 11, 0.12); color: #b45309; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Security Verification</span>
+        </div>
+        <h2 class="portal-title">Security Challenge</h2>
+        
+        <form id="security-question-form" class="gateway-form" onsubmit="verifySecurityQuestion(event); return false;">
+          <div class="form-group" style="text-align: left; margin-bottom: 18px;">
+            <label for="security-answer-input" style="font-weight: 600; color: #1e293b; font-size: 0.95rem; display: block; margin-bottom: 8px;">
+              ❓ What is the color of uniform?
+            </label>
+            <input type="text" id="security-answer-input" class="input-ctrl" placeholder="Enter answer" required style="font-size: 1rem; padding: 10px 14px;">
+            <small style="color: #64748b; font-size: 0.75rem; margin-top: 6px; display: block;">Answer this security question correctly to enter.</small>
+          </div>
+          <button type="submit" id="btn-verify-security" class="btn btn-primary" style="width: 100%;" onclick="verifySecurityQuestion(event); return false;">
+            Verify Answer & Proceed 🔓
+          </button>
+          <button type="button" class="btn btn-outline" onclick="cancelStep2();" style="margin-top: 10px; width: 100%;">
+            ← Back to Sign In
+          </button>
+        </form>
+      </div>
+
       <!-- STEP 3: Unified Portal Selection Landing Page Hub -->
       <div id="step3-container" style="display: none;">
         <div style="text-align: center; margin-bottom: 10px;">
@@ -324,7 +467,7 @@
         </p>
 
         <!-- Admin Portal Card -->
-        <div class="portal-hub-card" onclick="window.location.href='admin.html'">
+        <div class="portal-hub-card" onclick="clearPortalAuthAndGo('admin.html')">
           <div class="portal-hub-icon">👑</div>
           <div class="portal-hub-info">
             <h3>Admin Portal</h3>
@@ -334,7 +477,7 @@
         </div>
 
         <!-- Staff Uniform Issuer Card -->
-        <div class="portal-hub-card" onclick="window.location.href='staff.html'">
+        <div class="portal-hub-card" onclick="clearPortalAuthAndGo('staff.html')">
           <div class="portal-hub-icon">👔</div>
           <div class="portal-hub-info">
             <h3>Uniform Issuer Portal</h3>
@@ -344,7 +487,7 @@
         </div>
 
         <!-- Accounts & Billing Card -->
-        <div class="portal-hub-card" onclick="window.location.href='accounts.html'">
+        <div class="portal-hub-card" onclick="clearPortalAuthAndGo('accounts.html')">
           <div class="portal-hub-icon">🧾</div>
           <div class="portal-hub-info">
             <h3>Accounts & Billing Portal</h3>

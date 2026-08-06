@@ -6,6 +6,8 @@ const state = {
   activeView: 'billing',
   activeBranch: 'ALL',
   activeStatusFilter: 'ALL',
+  activeGradeFilter: 'ALL',
+  activeSectionFilter: 'ALL',
   currentUser: null,
   students: [],
   bills: [],
@@ -287,11 +289,30 @@ function renderStudentsList() {
   let filtered = state.activeBranch === 'ALL' 
     ? state.students 
     : state.students.filter(s => s.branch === state.activeBranch);
+
+  // Filter by Grade
+  if (state.activeGradeFilter && state.activeGradeFilter !== 'ALL') {
+    filtered = filtered.filter(s => s.grade && s.grade.startsWith(state.activeGradeFilter));
+  }
+
+  // Filter by Section
+  if (state.activeSectionFilter && state.activeSectionFilter !== 'ALL') {
+    filtered = filtered.filter(s => {
+      if (!s.grade) return false;
+      const parts = s.grade.split(' - ');
+      return parts.length > 1 && parts[1].trim().toUpperCase() === state.activeSectionFilter;
+    });
+  }
     
   // Filter by search query
   if (state.searchQuery.trim()) {
     const q = state.searchQuery.toLowerCase();
-    filtered = filtered.filter(s => s.name.toLowerCase().includes(q) || s.grade.toLowerCase().includes(q));
+    filtered = filtered.filter(s => 
+      s.name.toLowerCase().includes(q) || 
+      s.grade.toLowerCase().includes(q) ||
+      (s.admissionNo && s.admissionNo.toLowerCase().includes(q)) ||
+      (s.fatherName && s.fatherName.toLowerCase().includes(q))
+    );
   }
   
   // Filter by billing status
@@ -300,7 +321,7 @@ function renderStudentsList() {
   }
 
   if (filtered.length === 0) {
-    DOM.billingStudentScroll.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">No students found.</div>`;
+    DOM.billingStudentScroll.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">No matching students found.</div>`;
     return;
   }
 
@@ -316,8 +337,11 @@ function renderStudentsList() {
     div.className = `student-card-item ${state.selectedStudent && state.selectedStudent.id === s.id ? 'selected' : ''}`;
     div.innerHTML = `
       <div style="font-weight: 600; font-size: 0.95rem;">${s.name}</div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 0.75rem; color: var(--text-secondary);">
-        <span>${s.grade} | ${s.branch}</span>
+      <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;">
+        <span>Adm: <strong>${s.admissionNo || 'N/A'}</strong> | Father: ${s.fatherName || 'N/A'}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 0.78rem;">
+        <span style="font-weight: 600; color: var(--primary);">Class: ${s.grade} (${s.branch})</span>
         <span class="badge ${badgeClass}">${status}</span>
       </div>
     `;
@@ -348,6 +372,8 @@ function renderActiveBillingDetail() {
 
   const s = state.selectedStudent;
   DOM.billingProfileName.textContent = s.name;
+  if (document.getElementById('billing-profile-adm-no')) document.getElementById('billing-profile-adm-no').textContent = s.admissionNo ? `Adm: ${s.admissionNo}` : 'Adm: N/A';
+  if (document.getElementById('billing-profile-father-name')) document.getElementById('billing-profile-father-name').textContent = s.fatherName ? `Father: ${s.fatherName}` : 'Father: N/A';
   DOM.billingProfileBranch.textContent = s.branch;
   DOM.billingProfileGender.textContent = s.gender;
   DOM.billingProfileGrade.textContent = s.grade;
@@ -501,7 +527,7 @@ async function generateBillForStudent(studentId, amount) {
     if (!student) return;
     const operator = state.currentUser ? state.currentUser.username : 'Cashier Desk';
     
-    await db.createBill(studentId, student.name, student.grade, student.branch, student.gender, amount, operator);
+    await db.createBill(studentId, student.name, student.grade, student.branch, student.gender, amount, operator, student.fatherName, student.admissionNo);
     showToast(`Bill Invoice generated successfully for ${student.name}`, 'success');
     refreshData();
   } catch (error) {
@@ -681,12 +707,20 @@ function printInvoicePDF(bill) {
             <span class="grid-value">${bill.studentName}</span>
           </div>
           <div class="grid-line">
+            <span class="grid-label">Father Name:</span>
+            <span class="grid-value">${bill.fatherName || 'N/A'}</span>
+          </div>
+          <div class="grid-line">
             <span class="grid-label">Grade / Class:</span>
             <span class="grid-value">${bill.grade}</span>
           </div>
         </div>
         <div class="grid-col">
           <h4>Registration Details</h4>
+          <div class="grid-line">
+            <span class="grid-label">Admission No:</span>
+            <span class="grid-value">${bill.admissionNo || 'N/A'}</span>
+          </div>
           <div class="grid-line">
             <span class="grid-label">School Branch:</span>
             <span class="grid-value">${bill.branch}</span>
@@ -742,15 +776,6 @@ function printInvoicePDF(bill) {
       </div>
 
       <div class="signature-section">
-        <div class="sig-box">
-          <div style="font-size: 11px; font-weight: 600; text-align: left;">
-            ${bill.status === 'Paid' ? 'Verified Cashier' : 'Issued Cashier'}
-          </div>
-          <div style="font-style: italic; font-size: 11px; text-align: left; color: #555; height: 20px; line-height: 25px;">
-            ${bill.cashier}
-          </div>
-          <div class="sig-label">Prepared By</div>
-        </div>
         <div class="sig-box">
           <div class="sig-line"></div>
           <div class="sig-label">Acc Staff / Cashier Signature</div>
@@ -924,7 +949,7 @@ function printInvoicePDF(bill) {
         .signature-section {
           margin-top: 14px;
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: flex-end;
         }
         .sig-box {
@@ -1090,10 +1115,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', closeModal);
   });
   
-  // Search inputs
+  // Search inputs & Grade/Section Filters
   if (DOM.billingSearchInput) {
     DOM.billingSearchInput.addEventListener('input', (e) => {
       state.searchQuery = e.target.value;
+      renderStudentsList();
+    });
+  }
+
+  const gradeFilterEl = document.getElementById('billing-grade-filter');
+  if (gradeFilterEl) {
+    gradeFilterEl.addEventListener('change', (e) => {
+      state.activeGradeFilter = e.target.value;
+      renderStudentsList();
+    });
+  }
+
+  const sectionFilterEl = document.getElementById('billing-section-filter');
+  if (sectionFilterEl) {
+    sectionFilterEl.addEventListener('change', (e) => {
+      state.activeSectionFilter = e.target.value;
       renderStudentsList();
     });
   }
