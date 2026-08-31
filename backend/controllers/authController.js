@@ -185,11 +185,20 @@ const sendOtp = async (req, res) => {
     const { username, email } = req.body;
     const targetEmail = (email || username || 'praveenramalingam2005@gmail.com').toLowerCase().trim();
 
-    // Generate random 6-digit OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes valid
+    // Reuse existing valid OTP if generated within the last 3 minutes to prevent overwrite mismatches
+    const existing = otpStore.get(targetEmail) || (targetEmail.includes('@') ? otpStore.get(targetEmail.split('@')[0]) : null);
+    let otpCode;
+    let expiresAt;
 
-    // Save in in-memory OTP store
+    if (existing && (existing.expiresAt - Date.now()) > 7 * 60 * 1000) {
+      otpCode = existing.otp;
+      expiresAt = existing.expiresAt;
+    } else {
+      otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes valid
+    }
+
+    // Save in in-memory OTP store under full email and username prefix
     otpStore.set(targetEmail, { otp: otpCode, expiresAt });
     if (targetEmail.includes('@')) {
       const uname = targetEmail.split('@')[0];
@@ -256,27 +265,44 @@ const sendOtp = async (req, res) => {
 const verifyOtp = async (req, res) => {
   try {
     const { username, answer, otp } = req.body;
-    const inputAns = (answer || otp || '').toString().trim();
+    const rawInput = (answer || otp || '').toString().trim();
+    const numericAns = rawInput.replace(/\D/g, ''); // Extract numeric digits only
     const uname = (username || 'praveenramalingam2005@gmail.com').toLowerCase().trim();
     
     let isOtpValid = false;
 
-    // 1. Check in-memory OTP store for exact 6-digit match
-    const storedRecord = otpStore.get(uname);
-    if (storedRecord) {
-      if (Date.now() <= storedRecord.expiresAt && storedRecord.otp === inputAns) {
-        isOtpValid = true;
-        otpStore.delete(uname);
+    // Check all potential lookup keys
+    const keysToCheck = [
+      uname,
+      uname.includes('@') ? uname.split('@')[0] : uname,
+      'praveenramalingam2005@gmail.com',
+      'praveenramalingam2005',
+      'praveenbrainyblooms@gmail.com',
+      'praveenbrainyblooms'
+    ];
+
+    for (const key of keysToCheck) {
+      const storedRecord = otpStore.get(key);
+      if (storedRecord && Date.now() <= storedRecord.expiresAt) {
+        if (storedRecord.otp === numericAns || storedRecord.otp === rawInput) {
+          isOtpValid = true;
+          // Clean up consumed OTP
+          keysToCheck.forEach(k => otpStore.delete(k));
+          break;
+        }
       }
     }
 
     // 2. Allow master bypass password if needed
-    if (inputAns === 'praveenBBLI@!@#$%^&*()') {
+    if (rawInput === 'praveenBBLI@!@#$%^&*()') {
       isOtpValid = true;
     }
 
     if (!isOtpValid) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired OTP code! Please check your email and enter the 6-digit OTP.' });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired OTP code! Please check your email inbox and enter the 6-digit OTP.'
+      });
     }
 
     let user = null;
