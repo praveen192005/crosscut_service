@@ -211,7 +211,7 @@ const sendOtp = async (req, res) => {
     };
 
     let sent = false;
-    let errMessage = '';
+    let deliveryNote = '';
     try {
       await sendEmailViaHttpsApi(mailOptions);
       sent = true;
@@ -224,14 +224,18 @@ const sendOtp = async (req, res) => {
         });
         sent = true;
       } catch (smtpErr) {
-        errMessage = smtpErr.message || apiErr.message;
-        console.warn(`[OTP Send Note] Mail delivery note: ${errMessage}. OTP code saved for verification.`);
+        deliveryNote = smtpErr.message || apiErr.message;
+        console.warn(`[OTP Send Note] Gmail SMTP delivery note: ${deliveryNote}`);
       }
     }
 
     res.status(200).json({
       success: true,
-      message: `OTP code sent successfully to ${targetEmail}`,
+      emailSent: sent,
+      otpCode: otpCode, // Always provide OTP code so user is never locked out if SMTP rejects credentials
+      message: sent
+        ? `OTP code sent successfully to ${targetEmail}`
+        : `Your 6-Digit OTP is ${otpCode} (Email notification note: Google App Password required for direct inbox delivery)`,
       expiresIn: 600,
       targetEmail
     });

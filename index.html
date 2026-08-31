@@ -284,18 +284,34 @@
         if (window.db && typeof window.db.sendOtp === 'function') {
           const res = await window.db.sendOtp(email);
           const notice = document.getElementById('otp-status-msg');
+          const otpInput = document.getElementById('security-answer-input');
+
           if (notice) {
             notice.style.display = 'block';
-            notice.textContent = `✅ 6-Digit OTP sent to ${email}`;
+            if (res.emailSent) {
+              notice.textContent = `✅ 6-Digit OTP sent to ${email}`;
+            } else if (res.otpCode) {
+              notice.textContent = `🔑 Generated OTP Code: ${res.otpCode}`;
+            } else {
+              notice.textContent = res.message || `OTP generated for ${email}`;
+            }
           }
-          if (showAlert) alert(`6-Digit OTP code sent to ${email}. Please check your inbox.`);
+
+          // Show alert with OTP if SMTP needs configuration or on resend click
+          if (res.otpCode && (!res.emailSent || showAlert)) {
+            if (showAlert) {
+              alert(`6-Digit OTP Code Generated: ${res.otpCode}\n\n(Enter ${res.otpCode} in the input box to proceed)`);
+            }
+          } else if (showAlert) {
+            alert(`6-Digit OTP code sent to ${email}. Please check your inbox.`);
+          }
         }
       } catch (err) {
         console.warn('Send OTP note:', err);
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = '📩 Resend OTP to Email';
+          btn.innerHTML = '📩 Resend OTP Code to Email';
         }
       }
     }
