@@ -102,7 +102,7 @@ const sendEmailViaHttpsApi = (mailOptions) => {
 // Configure Nodemailer transporter optimized for cloud platforms (Render, etc.)
 const createTransporter = () => {
   const user = process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
-  const rawPass = process.env.EMAIL_PASS || 'euakdzdsvgruofbc';
+  const rawPass = process.env.EMAIL_PASS || 'uwadmbjmktkdcptk';
   const pass = rawPass.replace(/\s+/g, ''); // Strip any space from Google App Password
 
   const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
@@ -232,10 +232,10 @@ const sendOtp = async (req, res) => {
     res.status(200).json({
       success: true,
       emailSent: sent,
-      otpCode: otpCode, // Always provide OTP code so user is never locked out if SMTP rejects credentials
+      otpCode: sent ? undefined : otpCode,
       message: sent
-        ? `OTP code sent successfully to ${targetEmail}`
-        : `Your 6-Digit OTP is ${otpCode} (Email notification note: Google App Password required for direct inbox delivery)`,
+        ? `6-Digit OTP code sent directly to your email inbox (${targetEmail})`
+        : `Your 6-Digit OTP is ${otpCode} (Email notification note: ${deliveryNote})`,
       expiresIn: 600,
       targetEmail
     });
