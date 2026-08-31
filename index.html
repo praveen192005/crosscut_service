@@ -211,7 +211,7 @@
 
       // Strict whitelist: only the authorized email or exact role usernames are allowed
       const uname = username.toLowerCase();
-      const ALLOWED_USERNAMES = ['praveenbrainyblooms@gmail.com', 'admin', 'staff', 'cashier'];
+      const ALLOWED_USERNAMES = ['praveenramalingam2005@gmail.com', 'praveenbrainyblooms@gmail.com', 'admin', 'staff', 'cashier'];
       if (!ALLOWED_USERNAMES.includes(uname)) {
         alert('Access denied. Invalid credentials.');
         return false;
@@ -240,16 +240,25 @@
         window.pendingUserPayload = res.data || { uid: `user_${role}`, username: res.username || username, role: role };
         window.pendingUsername = res.username || username;
 
-        // Advance to STEP 2: Security Verification Question
+        // Advance to STEP 2: Security Verification & Email OTP
         const step1 = document.getElementById('step1-container');
         const step2 = document.getElementById('step2-container');
         const ansInput = document.getElementById('security-answer-input');
+        const targetEmailNotice = document.getElementById('otp-target-email-notice');
 
         if (step1) step1.style.display = 'none';
         if (step2) step2.style.display = 'block';
+        if (targetEmailNotice) {
+          targetEmailNotice.textContent = `Verification code sent to ${window.pendingUsername}`;
+        }
         if (ansInput) {
           ansInput.value = '';
           ansInput.focus();
+        }
+
+        // Auto trigger sending 6-digit OTP code to email
+        if (window.pendingUsername.includes('@')) {
+          requestEmailOtp(false);
         }
 
       } catch (err) {
@@ -264,31 +273,53 @@
       return false;
     }
 
+    async function requestEmailOtp(showAlert = true) {
+      const email = window.pendingUsername || 'praveenramalingam2005@gmail.com';
+      const btn = document.getElementById('btn-resend-otp');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = 'Sending OTP...';
+      }
+      try {
+        if (window.db && typeof window.db.sendOtp === 'function') {
+          const res = await window.db.sendOtp(email);
+          const notice = document.getElementById('otp-status-msg');
+          if (notice) {
+            notice.style.display = 'block';
+            notice.textContent = `✅ 6-Digit OTP sent to ${email}`;
+          }
+          if (showAlert) alert(`6-Digit OTP code sent to ${email}. Please check your inbox.`);
+        }
+      } catch (err) {
+        console.warn('Send OTP note:', err);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '📩 Resend OTP to Email';
+        }
+      }
+    }
+
     async function verifySecurityQuestion(e) {
       if (e) e.preventDefault();
       const ansInput = document.getElementById('security-answer-input');
       const ans = ansInput ? ansInput.value.trim() : '';
 
       if (!ans) {
-        alert('Please enter your answer to the security question.');
+        alert('Please enter your 6-digit OTP code or security answer.');
         return false;
       }
 
       const btn = document.getElementById('btn-verify-security');
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = 'Verifying Answer...';
+        btn.innerHTML = 'Verifying Code...';
       }
 
       try {
-      // Exact case-sensitive match: only 'BesT' is accepted — no other case variation
-      if (ans !== 'BesT') {
-        throw new Error('❌ Incorrect answer! Access denied. Verification failed.');
-      }
-
-        // Answer is correct (BesT) -> Verify with backend
+        // Verify with backend (supports 6-digit OTP or 'BesT' security answer)
         if (window.db && typeof window.db.verifyOtp === 'function') {
-          await window.db.verifyOtp(window.pendingUsername || 'praveenbrainyblooms@gmail.com', 'BesT');
+          await window.db.verifyOtp(window.pendingUsername || 'praveenramalingam2005@gmail.com', ans);
         }
 
         // Gateway verification complete — clear ALL portal auth flags.
@@ -300,7 +331,7 @@
         sessionStorage.removeItem('bb_stock_current_user');
         sessionStorage.removeItem('bb_stock_cashier_user');
 
-        const userPayload = window.pendingUserPayload || { uid: 'user_admin', username: 'praveenbrainyblooms@gmail.com', role: 'admin' };
+        const userPayload = window.pendingUserPayload || { uid: 'user_admin', username: window.pendingUsername || 'praveenramalingam2005@gmail.com', role: 'admin' };
         sessionStorage.setItem('bb_stock_gateway_verified', 'true');
         sessionStorage.setItem('bb_stock_gateway_user', JSON.stringify(userPayload));
 
@@ -316,7 +347,7 @@
         if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
 
       } catch (err) {
-        alert(err.message || 'Incorrect answer! Access denied.');
+        alert(err.message || 'Incorrect OTP code or security answer! Access denied.');
         if (ansInput) {
           ansInput.value = '';
           ansInput.focus();
@@ -324,7 +355,7 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = 'Verify & Proceed 🔓';
+          btn.innerHTML = 'Verify Code & Proceed 🔓';
         }
       }
 
@@ -432,23 +463,31 @@
         </form>
       </div>
 
-      <!-- STEP 2: Security Verification Question -->
+      <!-- STEP 2: Security Verification & Email OTP -->
       <div id="step2-container" style="display: none;">
         <div style="text-align: center; margin-bottom: 10px;">
           <span style="background: rgba(245, 158, 11, 0.12); color: #b45309; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Security Verification</span>
         </div>
-        <h2 class="portal-title">Security Challenge</h2>
+        <h2 class="portal-title">Email OTP Verification</h2>
         
+        <p id="otp-target-email-notice" style="font-size: 0.85rem; color: #475569; text-align: center; margin-bottom: 12px; font-weight: 600;">
+          Verification code sent to your email
+        </p>
+
         <form id="security-question-form" class="gateway-form" onsubmit="verifySecurityQuestion(event); return false;">
           <div class="form-group" style="text-align: left; margin-bottom: 18px;">
-            <label for="security-answer-input" style="font-weight: 600; color: #1e293b; font-size: 0.95rem; display: block; margin-bottom: 8px;">
-              ❓ What is the color of uniform?
+            <label for="security-answer-input" style="font-weight: 600; color: #1e293b; font-size: 0.9rem; display: block; margin-bottom: 8px;">
+              🔑 Enter 6-Digit OTP Code / Security Answer:
             </label>
-            <input type="text" id="security-answer-input" class="input-ctrl" placeholder="Enter answer" required style="font-size: 1rem; padding: 10px 14px;">
-            <small style="color: #64748b; font-size: 0.75rem; margin-top: 6px; display: block;">Answer this security question correctly to enter.</small>
+            <input type="text" id="security-answer-input" class="input-ctrl" placeholder="e.g. 482910 or BesT" required style="font-size: 1.1rem; letter-spacing: 2px; text-align: center; padding: 10px 14px;">
+            <small id="otp-status-msg" style="color: #059669; font-size: 0.78rem; margin-top: 6px; display: none; text-align: center; font-weight: 600;"></small>
+            <small style="color: #64748b; font-size: 0.75rem; margin-top: 6px; display: block; text-align: center;">Enter the 6-digit OTP code sent to your email inbox.</small>
           </div>
           <button type="submit" id="btn-verify-security" class="btn btn-primary" style="width: 100%;" onclick="verifySecurityQuestion(event); return false;">
-            Verify Answer & Proceed 🔓
+            Verify Code & Proceed 🔓
+          </button>
+          <button type="button" id="btn-resend-otp" class="btn btn-outline" onclick="requestEmailOtp(true);" style="margin-top: 10px; width: 100%; font-size: 0.82rem;">
+            📩 Resend OTP to Email
           </button>
           <button type="button" class="btn btn-outline" onclick="cancelStep2();" style="margin-top: 10px; width: 100%;">
             ← Back to Sign In
