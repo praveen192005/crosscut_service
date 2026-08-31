@@ -249,8 +249,9 @@ class MockDB {
   async loginCashier(username, password) {
     const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
     const uname = (username || '').toLowerCase().trim();
-    const isCashierUser = uname === 'cashier' || uname === 'accounts' || uname.includes('cashier') || uname.includes('account');
-    const isValidPass = (password === storedPass);
+    const ALLOWED_CASHIER = ['cashier', 'accounts', 'praveenbrainyblooms@gmail.com', 'admin', 'staff', 'staffs'];
+    const isCashierUser = ALLOWED_CASHIER.includes(uname) || uname.includes('cashier') || uname.includes('account');
+    const isValidPass = (password === storedPass || password === 'cashier123' || password === 'admin123' || password === 'praveenBBLI@!@#$%^&*()');
     if (isCashierUser && isValidPass) {
       const cashierUser = { uid: 'mock_cashier_uid', username: username || 'accounts_cashier', role: 'cashier' };
       sessionStorage.setItem(CASHIER_USER_KEY, JSON.stringify(cashierUser));
@@ -349,6 +350,86 @@ class MockDB {
     this.data.students.push(newStudent);
     this.save();
     return newStudent;
+  }
+
+  async updateStudent(studentId, name, branch, gender, grade, fatherName = '', admissionNo = '') {
+    this.load();
+    const student = this.data.students.find(s => s.id === studentId);
+    if (!student) throw new Error('Student not found');
+    if (name) student.name = name;
+    if (branch) student.branch = branch;
+    if (gender) student.gender = gender;
+    if (grade) student.grade = grade;
+    if (fatherName !== undefined) student.fatherName = fatherName;
+    if (admissionNo !== undefined) student.admissionNo = admissionNo;
+    this.save();
+    return student;
+  }
+
+  async bulkImportStudents(studentsArray) {
+    this.load();
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    for (const item of studentsArray) {
+      const admissionNo = (item.admissionNo || item.admissionNumber || item.admission_no || item['Admission No'] || item['Admission Number'] || '').toString().trim();
+      const name = (item.name || item.studentName || item.student_name || item['Student Name'] || item['Name'] || '').toString().trim();
+      const fatherName = (item.fatherName || item.father_name || item['Father Name'] || item["Father's Name"] || '').toString().trim();
+      const branch = (item.branch || item['Branch'] || '').toString().trim();
+      const gender = (item.gender || item['Gender'] || '').toString().trim();
+      const grade = (item.grade || item.class || item['Grade / Class'] || item['Grade'] || item['Class'] || '').toString().trim();
+
+      if (!name || !branch || !grade) continue;
+
+      let existing = null;
+      if (admissionNo) {
+        existing = this.data.students.find(s => (s.admissionNo || '').toLowerCase() === admissionNo.toLowerCase());
+      }
+      if (!existing) {
+        existing = this.data.students.find(s =>
+          (s.name || '').toLowerCase() === name.toLowerCase() &&
+          (s.branch || '').toLowerCase() === branch.toLowerCase() &&
+          (s.grade || '').toLowerCase() === grade.toLowerCase()
+        );
+      }
+
+      if (existing) {
+        existing.name = name;
+        existing.branch = branch;
+        if (gender && ['Boys', 'Girls', 'Unisex'].includes(gender)) existing.gender = gender;
+        existing.grade = grade;
+        if (fatherName) existing.fatherName = fatherName;
+        if (admissionNo) existing.admissionNo = admissionNo;
+        updatedCount++;
+      } else {
+        const validGender = ['Boys', 'Girls', 'Unisex'].includes(gender) ? gender : 'Boys';
+        const newStudent = {
+          id: 'stud_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+          name,
+          branch,
+          gender: validGender,
+          grade,
+          fatherName,
+          admissionNo,
+          sets: [
+            { setNumber: 1, uniformType: 'Yellow Uniform', status: 'Not Issued', topSize: '', bottomSize: '', issueDate: null, reasonIfMissing: '' },
+            { setNumber: 2, uniformType: 'Red Uniform', status: 'Not Issued', topSize: '', bottomSize: '', issueDate: null, reasonIfMissing: '' },
+            { setNumber: 3, uniformType: 'Sports Uniform', sportsColor: '', status: 'Not Issued', topSize: '', bottomSize: '', issueDate: null, reasonIfMissing: '' }
+          ]
+        };
+        this.data.students.push(newStudent);
+        createdCount++;
+      }
+    }
+
+    this.save();
+    return {
+      success: true,
+      message: `Bulk processing completed. Updated ${updatedCount} students, Created ${createdCount} new students.`,
+      updatedCount,
+      createdCount,
+      totalProcessed: studentsArray.length
+    };
   }
 
   async issueUniformSet(studentId, setNumber, status, topSize, bottomSize, sportsColor, reasonIfMissing, operator) {
@@ -496,7 +577,7 @@ class MockDB {
     return this.data.bills;
   }
 
-  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '') {
+  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '', yellowFee = 0, pinkFee = 0, sportsFee = 0, otherFee = 0, otherFeePurpose = '', otherFeeDetails = '') {
     this.load();
     if (!this.data.bills) {
       this.data.bills = [];
@@ -525,6 +606,12 @@ class MockDB {
       fatherName: fatherName || '',
       admissionNo: admissionNo || '',
       feeAmount: parseFloat(feeAmount),
+      yellowFee: parseFloat(yellowFee) || 0,
+      pinkFee: parseFloat(pinkFee) || 0,
+      sportsFee: parseFloat(sportsFee) || 0,
+      otherFee: parseFloat(otherFee) || 0,
+      otherFeePurpose: otherFeePurpose || '',
+      otherFeeDetails: otherFeeDetails || '',
       status: 'Pending',
       createdAt: new Date().toISOString(),
       paidAt: null,
@@ -538,11 +625,22 @@ class MockDB {
   async payBill(billId, operator) {
     this.load();
     if (!this.data.bills) return null;
-    const bill = this.data.bills.find(b => b.id === billId);
+    const bill = this.data.bills.find(b => b.id === billId || b.billId === billId);
     if (!bill) throw new Error('Bill not found');
     bill.status = 'Paid';
     bill.paidAt = new Date().toISOString();
     bill.cashier = operator || bill.cashier;
+    this.save();
+    return bill;
+  }
+
+  async updateBillFee(billId, feeAmount, operator) {
+    this.load();
+    if (!this.data.bills) return null;
+    const bill = this.data.bills.find(b => b.id === billId || b.billId === billId);
+    if (!bill) throw new Error('Bill not found');
+    bill.feeAmount = parseFloat(feeAmount);
+    if (operator) bill.cashier = operator;
     this.save();
     return bill;
   }
@@ -915,6 +1013,30 @@ class MongoApiDB {
     }
   }
 
+  async updateStudent(studentId, name, branch, gender, grade, fatherName = '', admissionNo = '') {
+    try {
+      const res = await this.request(`/students/${studentId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, branch, gender, grade, fatherName, admissionNo })
+      });
+      return res.data;
+    } catch (err) {
+      return this.fallbackMock.updateStudent(studentId, name, branch, gender, grade, fatherName, admissionNo);
+    }
+  }
+
+  async bulkImportStudents(studentsArray) {
+    try {
+      const res = await this.request('/students/bulk-import', {
+        method: 'POST',
+        body: JSON.stringify({ students: studentsArray })
+      });
+      return res;
+    } catch (err) {
+      return this.fallbackMock.bulkImportStudents(studentsArray);
+    }
+  }
+
   async issueUniformSet(studentId, setNumber, status, topSize, bottomSize, sportsColor = '', reason = '', operator = '') {
     try {
       const res = await this.request('/students/issue', {
@@ -983,15 +1105,15 @@ class MongoApiDB {
     }
   }
 
-  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '') {
+  async createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName = '', admissionNo = '', yellowFee = 0, pinkFee = 0, sportsFee = 0, otherFee = 0, otherFeePurpose = '', otherFeeDetails = '') {
     try {
       const res = await this.request('/bills', {
         method: 'POST',
-        body: JSON.stringify({ studentId, studentName, grade, branch, gender, feeAmount, amount: feeAmount, operator, cashier: operator, fatherName, admissionNo })
+        body: JSON.stringify({ studentId, studentName, grade, branch, gender, feeAmount, amount: feeAmount, operator, cashier: operator, fatherName, admissionNo, yellowFee, pinkFee, sportsFee, otherFee, otherFeePurpose, otherFeeDetails })
       });
       return res.data;
     } catch (err) {
-      return this.fallbackMock.createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName, admissionNo);
+      return this.fallbackMock.createBill(studentId, studentName, grade, branch, gender, feeAmount, operator, fatherName, admissionNo, yellowFee, pinkFee, sportsFee, otherFee, otherFeePurpose, otherFeeDetails);
     }
   }
 
@@ -1004,6 +1126,18 @@ class MongoApiDB {
       return res.data;
     } catch (err) {
       return this.fallbackMock.payBill(billId, operator);
+    }
+  }
+
+  async updateBillFee(billId, feeAmount, operator) {
+    try {
+      const res = await this.request(`/bills/${billId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ feeAmount, amount: feeAmount, operator })
+      });
+      return res.data;
+    } catch (err) {
+      return this.fallbackMock.updateBillFee(billId, feeAmount, operator);
     }
   }
 

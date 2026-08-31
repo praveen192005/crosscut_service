@@ -41,6 +41,8 @@ connectDB();
 
 const app = express();
 
+const mongoose = require('mongoose');
+
 // Middlewares
 app.use(cors());
 app.use(express.json());
@@ -53,6 +55,18 @@ if (process.env.NODE_ENV !== 'production') {
 // Favicon and touch icon handler (prevents 404 errors in server log)
 app.get(['/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed.png'], (req, res) => {
   res.status(204).end();
+});
+
+// Middleware to return fast response when MongoDB is disconnected, allowing instant frontend mock fallback
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health') return next();
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      success: false,
+      message: 'MongoDB database is not connected. Client will use local database fallback.'
+    });
+  }
+  next();
 });
 
 // Mount API Routes

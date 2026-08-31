@@ -222,12 +222,119 @@ const deleteAllRequests = async (req, res) => {
   }
 };
 
+// @desc    Update single student details
+// @route   PUT /api/students/:id
+const updateStudent = async (req, res) => {
+  try {
+    const { name, branch, gender, grade, fatherName, admissionNo } = req.body;
+    const student = await Student.findById(req.params.id);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    if (name) student.name = name.trim();
+    if (branch) student.branch = branch.trim();
+    if (gender) student.gender = gender.trim();
+    if (grade) student.grade = grade.trim();
+    if (fatherName !== undefined) student.fatherName = fatherName.trim();
+    if (admissionNo !== undefined) student.admissionNo = admissionNo.trim();
+
+    await student.save();
+    res.status(200).json({ success: true, data: student });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Bulk update/import students from array (parsed CSV or Excel)
+// @route   POST /api/students/bulk-import
+const bulkImportStudents = async (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ success: false, message: 'No student data array provided' });
+    }
+
+    let updatedCount = 0;
+    let createdCount = 0;
+
+    for (const item of students) {
+      const admissionNo = (item.admissionNo || item.admissionNumber || item.admission_no || item['Admission No'] || item['Admission Number'] || '').toString().trim();
+      const name = (item.name || item.studentName || item.student_name || item['Student Name'] || item['Name'] || '').toString().trim();
+      const fatherName = (item.fatherName || item.father_name || item['Father Name'] || item["Father's Name"] || '').toString().trim();
+      const branch = (item.branch || item['Branch'] || '').toString().trim();
+      const gender = (item.gender || item['Gender'] || '').toString().trim();
+      const grade = (item.grade || item.class || item['Grade / Class'] || item['Grade'] || item['Class'] || '').toString().trim();
+
+      if (!name || !branch || !grade) {
+        continue; // Skip invalid row missing required fields
+      }
+
+      // Try matching existing student:
+      // 1. Match by admissionNo if present
+      // 2. Otherwise match by name + branch + grade (case-insensitive)
+      let existingStudent = null;
+
+      if (admissionNo) {
+        existingStudent = await Student.findOne({ admissionNo: new RegExp(`^${admissionNo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') });
+      }
+
+      if (!existingStudent) {
+        existingStudent = await Student.findOne({
+          name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+          branch: new RegExp(`^${branch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+          grade: new RegExp(`^${grade.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'),
+        });
+      }
+
+      if (existingStudent) {
+        // Update details
+        existingStudent.name = name;
+        existingStudent.branch = branch;
+        if (gender && ['Boys', 'Girls', 'Unisex'].includes(gender)) existingStudent.gender = gender;
+        existingStudent.grade = grade;
+        if (fatherName) existingStudent.fatherName = fatherName;
+        if (admissionNo) existingStudent.admissionNo = admissionNo;
+
+        await existingStudent.save();
+        updatedCount++;
+      } else {
+        // Create new student
+        const validGender = ['Boys', 'Girls', 'Unisex'].includes(gender) ? gender : 'Boys';
+        await Student.create({
+          name,
+          branch,
+          gender: validGender,
+          grade,
+          fatherName,
+          admissionNo,
+          sets: getDefaultSets(),
+        });
+        createdCount++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Bulk processing completed. Updated ${updatedCount} students, Created ${createdCount} new students.`,
+      updatedCount,
+      createdCount,
+      totalProcessed: students.length,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getStudents,
   addStudent,
+  updateStudent,
+  bulkImportStudents,
   issueUniformSet,
   deleteStudent,
   deleteAllStudents,
   deleteRequest,
   deleteAllRequests,
 };
+

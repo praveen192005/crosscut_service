@@ -8,6 +8,7 @@ const state = {
   activeStatusFilter: 'ALL',
   activeGradeFilter: 'ALL',
   activeSectionFilter: 'ALL',
+  activeMatrixGender: 'Boys',
   currentUser: null,
   students: [],
   bills: [],
@@ -34,6 +35,7 @@ const DOM = {
   // Views
   viewBilling: document.getElementById('view-billing'),
   viewTransactions: document.getElementById('view-transactions'),
+  viewFeeStructure: document.getElementById('view-fee-structure'),
   
   // Billing Directory
   billingSearchInput: document.getElementById('billing-search-input'),
@@ -105,10 +107,17 @@ function navigateTo(viewId) {
     targetView.classList.add('active');
   }
 
-  // Update header text
+  if (DOM.viewBilling) DOM.viewBilling.style.display = viewId === 'billing' ? 'block' : 'none';
+  if (DOM.viewTransactions) DOM.viewTransactions.style.display = viewId === 'transactions' ? 'block' : 'none';
+  if (DOM.viewFeeStructure) DOM.viewFeeStructure.style.display = viewId === 'fee-structure' ? 'block' : 'none';
+  
   if (DOM.viewTitle) {
     if (viewId === 'billing') DOM.viewTitle.textContent = 'Uniform Billing';
     else if (viewId === 'transactions') DOM.viewTitle.textContent = 'Accounts Collection Ledger';
+    else if (viewId === 'fee-structure') {
+      DOM.viewTitle.textContent = 'Grade Uniform Fee Matrix Master';
+      renderGradeFeeMatrixTable();
+    }
   }
 
   refreshData();
@@ -245,6 +254,342 @@ function getUniformFee(grade, gender) {
 
   // Fallback default
   return isBoy ? 2600 : 2700;
+}
+
+const DEFAULT_BOYS_FEE_MATRIX = [
+  { gradeKey: 'LKG', gradeName: 'Junior KG / LKG', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'UKG', gradeName: 'Senior KG / UKG', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_1', gradeName: 'Grade 1 / I Std', yellowFee: 950, pinkFee: 950, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_2', gradeName: 'Grade 2 / II Std', yellowFee: 950, pinkFee: 950, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_3', gradeName: 'Grade 3 / III Std', yellowFee: 1000, pinkFee: 1000, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_4', gradeName: 'Grade 4 / IV Std', yellowFee: 1000, pinkFee: 1000, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_5', gradeName: 'Grade 5 / V Std', yellowFee: 1000, pinkFee: 1000, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_6', gradeName: 'Grade 6 / VI Std', yellowFee: 1300, pinkFee: 1300, sportsFee: 1100, otherFee: 0 },
+  { gradeKey: 'GRADE_7', gradeName: 'Grade 7 / VII Std', yellowFee: 1300, pinkFee: 1300, sportsFee: 1100, otherFee: 0 },
+  { gradeKey: 'GRADE_8', gradeName: 'Grade 8 / VIII Std', yellowFee: 1300, pinkFee: 1300, sportsFee: 1100, otherFee: 0 },
+  { gradeKey: 'GRADE_9', gradeName: 'Grade 9 / IX Std', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_10', gradeName: 'Grade 10 / X Std', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_11', gradeName: 'Grade 11 / XI Std', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_12', gradeName: 'Grade 12 / XII Std', yellowFee: 900, pinkFee: 900, sportsFee: 800, otherFee: 0 }
+];
+
+const DEFAULT_GIRLS_FEE_MATRIX = [
+  { gradeKey: 'LKG', gradeName: 'Junior KG / LKG', yellowFee: 950, pinkFee: 950, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'UKG', gradeName: 'Senior KG / UKG', yellowFee: 950, pinkFee: 950, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_1', gradeName: 'Grade 1 / I Std', yellowFee: 1000, pinkFee: 1000, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_2', gradeName: 'Grade 2 / II Std', yellowFee: 1000, pinkFee: 1000, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_3', gradeName: 'Grade 3 / III Std', yellowFee: 1050, pinkFee: 1050, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_4', gradeName: 'Grade 4 / IV Std', yellowFee: 1050, pinkFee: 1050, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_5', gradeName: 'Grade 5 / V Std', yellowFee: 1050, pinkFee: 1050, sportsFee: 800, otherFee: 0 },
+  { gradeKey: 'GRADE_6', gradeName: 'Grade 6 / VI Std', yellowFee: 1600, pinkFee: 1600, sportsFee: 1400, otherFee: 0 },
+  { gradeKey: 'GRADE_7', gradeName: 'Grade 7 / VII Std', yellowFee: 1600, pinkFee: 1600, sportsFee: 1400, otherFee: 0 },
+  { gradeKey: 'GRADE_8', gradeName: 'Grade 8 / VIII Std', yellowFee: 1600, pinkFee: 1600, sportsFee: 1400, otherFee: 0 },
+  { gradeKey: 'GRADE_9', gradeName: 'Grade 9 / IX Std', yellowFee: 1100, pinkFee: 1100, sportsFee: 1000, otherFee: 0 },
+  { gradeKey: 'GRADE_10', gradeName: 'Grade 10 / X Std', yellowFee: 1100, pinkFee: 1100, sportsFee: 1000, otherFee: 0 },
+  { gradeKey: 'GRADE_11', gradeName: 'Grade 11 / XI Std', yellowFee: 1100, pinkFee: 1100, sportsFee: 1000, otherFee: 0 },
+  { gradeKey: 'GRADE_12', gradeName: 'Grade 12 / XII Std', yellowFee: 1100, pinkFee: 1100, sportsFee: 1000, otherFee: 0 }
+];
+
+function getAllGradeFeeMatrices() {
+  try {
+    const stored = localStorage.getItem('bb_grade_fee_matrix_gender_v2');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed && parsed.Boys && parsed.Girls) return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read gender fee matrix:', err);
+  }
+  return {
+    Boys: DEFAULT_BOYS_FEE_MATRIX,
+    Girls: DEFAULT_GIRLS_FEE_MATRIX
+  };
+}
+
+function getGradeFeeMatrix(targetGender = 'Boys') {
+  const isGirl = (targetGender || '').toLowerCase() === 'girls';
+  const genderKey = isGirl ? 'Girls' : 'Boys';
+  const allMatrices = getAllGradeFeeMatrices();
+  return allMatrices[genderKey] || (isGirl ? DEFAULT_GIRLS_FEE_MATRIX : DEFAULT_BOYS_FEE_MATRIX);
+}
+
+function renderGradeFeeMatrixTable() {
+  const tbody = document.getElementById('grade-fee-matrix-tbody');
+  if (!tbody) return;
+
+  const boysBtn = document.getElementById('btn-matrix-boys');
+  const girlsBtn = document.getElementById('btn-matrix-girls');
+
+  if (boysBtn && girlsBtn) {
+    if (state.activeMatrixGender === 'Girls') {
+      girlsBtn.classList.remove('btn-outline');
+      girlsBtn.classList.add('btn-primary');
+      boysBtn.classList.remove('btn-primary');
+      boysBtn.classList.add('btn-outline');
+    } else {
+      boysBtn.classList.remove('btn-outline');
+      boysBtn.classList.add('btn-primary');
+      girlsBtn.classList.remove('btn-primary');
+      girlsBtn.classList.add('btn-outline');
+    }
+  }
+
+  const matrix = getGradeFeeMatrix(state.activeMatrixGender);
+  tbody.innerHTML = matrix.map((row, idx) => {
+    const yellow = parseFloat(row.yellowFee) || 0;
+    const pink = parseFloat(row.pinkFee) || 0;
+    const sports = parseFloat(row.sportsFee) || 0;
+    const total = yellow + pink + sports;
+    const isHighSchool = ['GRADE_9', 'GRADE_10', 'GRADE_11', 'GRADE_12'].includes(row.gradeKey);
+    const yellowLabel = isHighSchool ? '🟨 Yellow Cloth Material (₹)' : '🟨 Yellow Uniform Fee (₹)';
+    const pinkLabel = isHighSchool ? '🩷 Pink Cloth Material (₹)' : '🩷 Pink / Red Fee (₹)';
+
+    return `
+      <tr data-index="${idx}">
+        <td style="font-weight: 600; color: #1e293b;">
+          ${row.gradeName}
+          ${isHighSchool ? `<div style="font-size: 0.72rem; color: #6366f1; font-weight: 500;">(Pink & Yellow = Cloth Material, Sports = Stitched Set)</div>` : ''}
+          <input type="hidden" class="matrix-key" value="${row.gradeKey}">
+          <input type="hidden" class="matrix-name" value="${row.gradeName}">
+        </td>
+        <td>
+          <input type="number" class="input-ctrl matrix-yellow" value="${row.yellowFee}" min="0" step="1" style="font-weight: 600; padding: 4px 8px; color: #000; background: #fff;" title="${yellowLabel}">
+        </td>
+        <td>
+          <input type="number" class="input-ctrl matrix-pink" value="${row.pinkFee}" min="0" step="1" style="font-weight: 600; padding: 4px 8px; color: #000; background: #fff;" title="${pinkLabel}">
+        </td>
+        <td>
+          <input type="number" class="input-ctrl matrix-sports" value="${row.sportsFee}" min="0" step="1" style="font-weight: 600; padding: 4px 8px; color: #000; background: #fff;" title="🏃 Sports Uniform Set (₹)">
+        </td>
+        <td style="text-align: right; font-weight: 700; color: var(--primary); font-size: 1.05rem;" class="matrix-total">
+          ₹${total}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const yIn = tr.querySelector('.matrix-yellow');
+    const pIn = tr.querySelector('.matrix-pink');
+    const sIn = tr.querySelector('.matrix-sports');
+    const totCell = tr.querySelector('.matrix-total');
+
+    const updateRowTotal = () => {
+      const y = parseFloat(yIn.value) || 0;
+      const p = parseFloat(pIn.value) || 0;
+      const s = parseFloat(sIn.value) || 0;
+      totCell.textContent = `₹${y + p + s}`;
+    };
+
+    [yIn, pIn, sIn].forEach(inp => inp.addEventListener('input', updateRowTotal));
+  });
+}
+
+function saveGradeFeeMatrix() {
+  const tbody = document.getElementById('grade-fee-matrix-tbody');
+  if (!tbody) return;
+
+  const rows = tbody.querySelectorAll('tr');
+  const activeGenderMatrix = [];
+  rows.forEach(tr => {
+    const key = tr.querySelector('.matrix-key').value;
+    const name = tr.querySelector('.matrix-name').value;
+    const y = parseFloat(tr.querySelector('.matrix-yellow').value) || 0;
+    const p = parseFloat(tr.querySelector('.matrix-pink').value) || 0;
+    const s = parseFloat(tr.querySelector('.matrix-sports').value) || 0;
+    activeGenderMatrix.push({
+      gradeKey: key,
+      gradeName: name,
+      yellowFee: y,
+      pinkFee: p,
+      sportsFee: s,
+      otherFee: 0
+    });
+  });
+
+  const allMatrices = getAllGradeFeeMatrices();
+  const genderKey = state.activeMatrixGender === 'Girls' ? 'Girls' : 'Boys';
+  allMatrices[genderKey] = activeGenderMatrix;
+
+  try {
+    localStorage.setItem('bb_grade_fee_matrix_gender_v2', JSON.stringify(allMatrices));
+    showToast(`Grade Fee Structure for ${genderKey} saved successfully! Rates will auto-apply to student billing.`, 'success');
+  } catch (err) {
+    showToast('Failed to save fee structure: ' + err.message, 'error');
+  }
+}
+
+// ----------------------------------------------------
+// Special & Other Fees Master Catalog (ECA, Trips, etc.)
+// ----------------------------------------------------
+const DEFAULT_SPECIAL_FEES = [
+  { id: 'sf_1', purpose: 'ECA / Co-Curricular Activity Fee', amount: 500, grade: 'ALL', details: 'Annual Sports & Cultural Activities' },
+  { id: 'sf_2', purpose: 'Educational School Trip', amount: 1200, grade: 'ALL', details: 'Field Visit & Transport' },
+  { id: 'sf_3', purpose: 'Lab & Computer Facility Fee', amount: 800, grade: 'IX Std', details: 'Science & Computer Lab Maintenance' }
+];
+
+function getSpecialFees() {
+  try {
+    const stored = localStorage.getItem('bb_special_other_fees_v1');
+    if (stored !== null) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn('Could not read special fees catalog:', err);
+  }
+  return DEFAULT_SPECIAL_FEES;
+}
+
+function saveSpecialFees(fees) {
+  try {
+    localStorage.setItem('bb_special_other_fees_v1', JSON.stringify(fees));
+  } catch (err) {
+    showToast('Failed to save special fees: ' + err.message, 'error');
+  }
+}
+
+function renderSpecialFeesCatalogTable() {
+  const tbody = document.getElementById('special-fee-catalog-tbody');
+  if (!tbody) return;
+  const fees = getSpecialFees();
+
+  if (fees.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 16px;">No special fees configured. Add one using the form above.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = fees.map(f => `
+    <tr>
+      <td style="font-weight: 600; color: #1e293b;">${f.purpose}</td>
+      <td style="font-weight: 700; color: #059669;">₹${f.amount}</td>
+      <td><span class="badge badge-neutral" style="font-size: 0.75rem;">${f.grade || 'ALL'}</span></td>
+      <td style="color: #64748b; font-size: 0.85rem;">${f.details || 'N/A'}</td>
+      <td style="text-align: right;">
+        <button type="button" class="btn btn-danger btn-sm btn-delete-special-fee" data-id="${f.id}" style="padding: 2px 8px; font-size: 0.75rem;">❌ Remove</button>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.btn-delete-special-fee').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const feeId = btn.dataset.id;
+      const current = getSpecialFees();
+      const updated = current.filter(item => item.id !== feeId);
+      saveSpecialFees(updated);
+      renderSpecialFeesCatalogTable();
+      showToast('Special fee item removed.', 'info');
+    });
+  });
+}
+
+function handleAddSpecialFeeSubmit(e) {
+  e.preventDefault();
+  const purposeEl = document.getElementById('special-fee-purpose');
+  const amountEl = document.getElementById('special-fee-amount');
+  const gradeEl = document.getElementById('special-fee-grade');
+  const detailsEl = document.getElementById('special-fee-details');
+
+  const purpose = purposeEl ? purposeEl.value.trim() : '';
+  const amount = amountEl ? parseFloat(amountEl.value) : 0;
+  const grade = gradeEl ? gradeEl.value : 'ALL';
+  const details = detailsEl ? detailsEl.value.trim() : '';
+
+  if (!purpose || isNaN(amount) || amount <= 0) {
+    showToast('Please enter a valid Fee Purpose and Amount.', 'error');
+    return;
+  }
+
+  const current = getSpecialFees();
+  const newItem = {
+    id: `sf_${Date.now()}`,
+    purpose,
+    amount,
+    grade,
+    details
+  };
+  current.push(newItem);
+  saveSpecialFees(current);
+  renderSpecialFeesCatalogTable();
+
+  if (purposeEl) purposeEl.value = '';
+  if (amountEl) amountEl.value = '';
+  if (detailsEl) detailsEl.value = '';
+
+  showToast(`Special fee "${purpose}" (₹${amount}) created successfully!`, 'success');
+}
+
+function handleClearAllSpecialFees() {
+  if (confirm('Are you sure you want to remove all special fee items from the master catalog?')) {
+    saveSpecialFees([]);
+    renderSpecialFeesCatalogTable();
+    showToast('All special fee items cleared.', 'info');
+  }
+}
+
+function initFeeSubTabs() {
+  document.querySelectorAll('.fee-subtab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.fee-subtab-btn').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline');
+      });
+      e.currentTarget.classList.add('active', 'btn-primary');
+      e.currentTarget.classList.remove('btn-outline');
+
+      const targetId = e.currentTarget.dataset.target;
+      document.querySelectorAll('.fee-subtab-content').forEach(c => c.style.display = 'none');
+      const targetEl = document.getElementById(targetId);
+      if (targetEl) targetEl.style.display = 'block';
+
+      if (targetId === 'subtab-other-fees') {
+        renderSpecialFeesCatalogTable();
+      }
+    });
+  });
+}
+
+function getUniformParticularFees(grade, gender) {
+  const matrix = getGradeFeeMatrix(gender);
+  const gLower = (grade || '').toLowerCase();
+  const isHighSchool = gLower.includes('9') || gLower.includes('10') || gLower.includes('11') || gLower.includes('12') ||
+                       gLower.includes('ix') || gLower.includes('x') || gLower.includes('xi') || gLower.includes('xii');
+
+  const match = matrix.find(m => {
+    const k = m.gradeKey.toLowerCase();
+    const n = m.gradeName.toLowerCase();
+    if (gLower.includes('lkg') || gLower.includes('junior kg') || gLower.includes('jkg')) return k === 'lkg' || n.includes('lkg');
+    if (gLower.includes('ukg') || gLower.includes('senior kg') || gLower.includes('skg')) return k === 'ukg' || n.includes('ukg');
+    if (gLower.includes('12') || gLower.includes('xii')) return k === 'grade_12' || n.includes('12');
+    if (gLower.includes('11') || gLower.includes('xi')) return k === 'grade_11' || n.includes('11');
+    if (gLower.includes('10') || gLower.includes('x')) return k === 'grade_10' || n.includes('10');
+    if (gLower.includes('9') || gLower.includes('ix')) return k === 'grade_9' || n.includes('9');
+    if (gLower.includes('8') || gLower.includes('viii')) return k === 'grade_8' || n.includes('8');
+    if (gLower.includes('7') || gLower.includes('vii')) return k === 'grade_7' || n.includes('7');
+    if (gLower.includes('6') || gLower.includes('vi')) return k === 'grade_6' || n.includes('6');
+    if (gLower.includes('5') || gLower.includes('v')) return k === 'grade_5' || n.includes('5');
+    if (gLower.includes('4') || gLower.includes('iv')) return k === 'grade_4' || n.includes('4');
+    if (gLower.includes('3') || gLower.includes('iii')) return k === 'grade_3' || n.includes('3');
+    if (gLower.includes('2') || gLower.includes('ii')) return k === 'grade_2' || n.includes('2');
+    if (gLower.includes('1') || gLower.includes('i')) return k === 'grade_1' || n.includes('1');
+    return false;
+  });
+
+  if (match) {
+    const yellowFee = match.yellowFee;
+    const pinkFee = match.pinkFee;
+    const sportsFee = match.sportsFee;
+    const otherFee = match.otherFee || 0;
+    const total = yellowFee + pinkFee + sportsFee + otherFee;
+    return { yellowFee, pinkFee, sportsFee, otherFee, total, isHighSchool, isAutoLoaded: true };
+  }
+
+  const total = getUniformFee(grade, gender);
+  const sportsFee = Math.round(total * 0.3);
+  const remaining = total - sportsFee;
+  const yellowFee = Math.floor(remaining / 2);
+  const pinkFee = remaining - yellowFee;
+  return { yellowFee, pinkFee, sportsFee, otherFee: 0, total, isHighSchool, isAutoLoaded: false };
 }
 
 // ----------------------------------------------------
@@ -391,45 +736,172 @@ function renderActiveBillingDetail() {
   const bill = state.bills.find(b => b.studentId === s.id);
 
   if (status === 'Unbilled') {
+    const defaults = getUniformParticularFees(s.grade, s.gender);
+    const yellowTitle = defaults.isHighSchool ? '🟨 Yellow Uniform Cloth Material' : '🟨 Yellow Uniform Set';
+    const pinkTitle = defaults.isHighSchool ? '🩷 Pink / Red Uniform Cloth Material' : '🩷 Pink / Red Uniform Set';
+    const sportsTitle = '🏃 Sports Uniform Set';
+
+    const specialFeesCatalog = getSpecialFees().filter(f => f.grade === 'ALL' || (s.grade && s.grade.startsWith(f.grade)));
+    const presetOptionsHtml = `<option value="">-- Select Special Fee Preset (or Type Custom Below) --</option>` +
+      specialFeesCatalog.map(f => `<option value="${f.id}" data-amount="${f.amount}" data-purpose="${f.purpose}" data-details="${f.details}">${f.purpose} (₹${f.amount})</option>`).join('');
+
     DOM.dynamicBillCard.innerHTML = `
       <div class="glass-panel" style="padding: 20px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px;">
-        <h4 style="margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-          <span>📝</span> Create Student Bill Card
+        <h4 style="margin-bottom: 8px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+          <span>📝</span> Particular Uniform & Fee Calculator
         </h4>
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
-          No billing details generated for this student. The pricing engine has automatically calculated the uniform package fee.
+        <p style="color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 16px;">
+          Auto-loaded rates for <strong>${s.grade}</strong> (${s.gender}):
+          ${defaults.isHighSchool ? `<br><span style="color: #6366f1; font-weight: 600;">(Grade 9-12 Rules: Pink & Yellow issued as Cloth Material, Sports as Stitched Set)</span>` : ''}
         </p>
-        
-        <div style="border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; margin-bottom: 16px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 6px;">
-            <span style="color: var(--text-secondary);">Uniform Package:</span>
-            <strong>3 Allocated Sets (Complete Pack)</strong>
+
+        <!-- Particular Fees Entry Card -->
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 14px;">
+          
+          <!-- Yellow Uniform -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+              <input type="checkbox" id="check-fee-yellow" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span>${yellowTitle}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">₹</span>
+              <input type="number" id="input-fee-yellow" class="input-ctrl" value="${defaults.yellowFee}" min="0" step="1" style="width: 110px; font-weight: 700; text-align: right; font-size: 0.95rem; padding: 4px 8px; color: #000; background: #fff;">
+            </div>
           </div>
+
+          <!-- Pink / Red Uniform -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+              <input type="checkbox" id="check-fee-pink" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span>${pinkTitle}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">₹</span>
+              <input type="number" id="input-fee-pink" class="input-ctrl" value="${defaults.pinkFee}" min="0" step="1" style="width: 110px; font-weight: 700; text-align: right; font-size: 0.95rem; padding: 4px 8px; color: #000; background: #fff;">
+            </div>
+          </div>
+
+          <!-- Sports Uniform -->
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+              <input type="checkbox" id="check-fee-sports" checked style="width: 16px; height: 16px; cursor: pointer;">
+              <span>${sportsTitle}</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">₹</span>
+              <input type="number" id="input-fee-sports" class="input-ctrl" value="${defaults.sportsFee}" min="0" step="1" style="width: 110px; font-weight: 700; text-align: right; font-size: 0.95rem; padding: 4px 8px; color: #000; background: #fff;">
+            </div>
+          </div>
+
+          <!-- Special / Other Fee -->
+          <div style="padding-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; color: #1e293b;">
+                <input type="checkbox" id="check-fee-other" style="width: 16px; height: 16px; cursor: pointer;">
+                <span>🎟️ Special / Other Fee (ECA, Trip, Exams)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-weight: 600; color: #64748b; font-size: 0.9rem;">₹</span>
+                <input type="number" id="input-fee-other" class="input-ctrl" value="0" min="0" step="1" style="width: 110px; font-weight: 700; text-align: right; font-size: 0.95rem; padding: 4px 8px; color: #059669; background: #fff;">
+              </div>
+            </div>
+
+            <!-- Special Fee Details Form -->
+            <div id="other-fee-details-box" style="display: none; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-top: 8px;">
+              <div style="margin-bottom: 6px;">
+                <label style="font-size: 0.72rem; font-weight: 600; color: #64748b; display: block; margin-bottom: 2px;">⚡ Select Configured Special Fee Preset:</label>
+                <select id="select-special-fee-preset" class="input-ctrl" style="font-size: 0.8rem; padding: 4px 8px; background: #fff;">
+                  ${presetOptionsHtml}
+                </select>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="input-fee-other-purpose" class="input-ctrl" placeholder="Fee Purpose e.g. ECA Activity / Trip" style="font-size: 0.8rem; padding: 4px 8px; flex: 1; background: #fff;">
+                <input type="text" id="input-fee-other-details" class="input-ctrl" placeholder="Notes (Optional)" style="font-size: 0.8rem; padding: 4px 8px; flex: 1; background: #fff;">
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; margin-bottom: 16px;">
           <div style="display: flex; justify-content: space-between; font-size: 1.15rem; font-weight: 700; color: var(--text-primary);">
-            <span>Total Uniform Fee:</span>
-            <span style="color: var(--primary);">₹${calculatedFee}</span>
+            <span>Calculated Bill Total:</span>
+            <span style="color: var(--primary);" id="display-invoice-fee-amount">₹${defaults.total}</span>
           </div>
         </div>
 
         <button class="btn btn-primary" id="btn-generate-bill" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 0.95rem; padding: 10px;">
           ⚡ Generate & Issue Invoice
         </button>
-
-        <div style="margin-top: 20px; font-size: 0.75rem; color: var(--text-muted); border-top: 1px dashed rgba(255,255,255,0.08); padding-top: 12px;">
-          <strong>Price Sheet Reference Rules:</strong>
-          <ul style="margin-top: 6px; padding-left: 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-            <li>KG: B-2600 / G-2700</li>
-            <li>Gr 1-2: B-2700 / G-2800</li>
-            <li>Gr 3-5: B-2800 / G-2900</li>
-            <li>Gr 6-8: B-3700 / G-4600</li>
-            <li>Gr 9-12: B-2600 / G-3200</li>
-          </ul>
-        </div>
       </div>
     `;
-    
+
+    const calcTotal = () => {
+      const yCheck = document.getElementById('check-fee-yellow')?.checked;
+      const pCheck = document.getElementById('check-fee-pink')?.checked;
+      const sCheck = document.getElementById('check-fee-sports')?.checked;
+      const oCheck = document.getElementById('check-fee-other')?.checked;
+
+      const yVal = yCheck ? (parseFloat(document.getElementById('input-fee-yellow')?.value) || 0) : 0;
+      const pVal = pCheck ? (parseFloat(document.getElementById('input-fee-pink')?.value) || 0) : 0;
+      const sVal = sCheck ? (parseFloat(document.getElementById('input-fee-sports')?.value) || 0) : 0;
+      const oVal = oCheck ? (parseFloat(document.getElementById('input-fee-other')?.value) || 0) : 0;
+
+      const detailsBox = document.getElementById('other-fee-details-box');
+      if (detailsBox) detailsBox.style.display = oCheck ? 'block' : 'none';
+
+      const total = yVal + pVal + sVal + oVal;
+      const disp = document.getElementById('display-invoice-fee-amount');
+      if (disp) disp.textContent = `₹${total}`;
+      return { yVal, pVal, sVal, oVal, total };
+    };
+
+    ['check-fee-yellow', 'check-fee-pink', 'check-fee-sports', 'check-fee-other'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('change', calcTotal);
+    });
+
+    ['input-fee-yellow', 'input-fee-pink', 'input-fee-sports', 'input-fee-other'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', calcTotal);
+    });
+
+    const presetSelect = document.getElementById('select-special-fee-preset');
+    if (presetSelect) {
+      presetSelect.addEventListener('change', (e) => {
+        const selectedOpt = e.target.options[e.target.selectedIndex];
+        if (selectedOpt && selectedOpt.value) {
+          const amt = selectedOpt.dataset.amount;
+          const purp = selectedOpt.dataset.purpose;
+          const det = selectedOpt.dataset.details;
+
+          const checkOther = document.getElementById('check-fee-other');
+          if (checkOther) checkOther.checked = true;
+
+          const inputOther = document.getElementById('input-fee-other');
+          if (inputOther) inputOther.value = amt || 0;
+
+          const inputPurp = document.getElementById('input-fee-other-purpose');
+          if (inputPurp) inputPurp.value = purp || '';
+
+          const inputDet = document.getElementById('input-fee-other-details');
+          if (inputDet) inputDet.value = det || '';
+
+          calcTotal();
+        }
+      });
+    }
+
     document.getElementById('btn-generate-bill').addEventListener('click', () => {
-      generateBillForStudent(s.id, calculatedFee);
+      const { yVal, pVal, sVal, oVal, total } = calcTotal();
+      if (total <= 0) {
+        showToast('Please select at least one uniform fee item with a valid amount.', 'error');
+        return;
+      }
+      const otherPurp = document.getElementById('input-fee-other-purpose')?.value || '';
+      const otherDet = document.getElementById('input-fee-other-details')?.value || '';
+      generateBillForStudent(s.id, total, yVal, pVal, sVal, oVal, otherPurp, otherDet);
     });
 
   } else if (status === 'Pending') {
@@ -445,30 +917,37 @@ function renderActiveBillingDetail() {
         
         <div style="border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0; margin-bottom: 20px;">
           <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 6px;">
-            <span style="color: var(--text-secondary);">Item Description:</span>
-            <strong>Uniform Set Package (3 Sets)</strong>
-          </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.95rem; margin-bottom: 6px;">
             <span style="color: var(--text-secondary);">Billed Grade/Class:</span>
             <strong>${bill.grade}</strong>
           </div>
+          ${bill.otherFee && bill.otherFee > 0 ? `
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #475569; margin-bottom: 4px;">
+            <span>Included Other Fee (${bill.otherFeePurpose || 'ECA/Trip'}):</span>
+            <strong>₹${bill.otherFee}</strong>
+          </div>` : ''}
           <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 700; color: var(--text-primary); margin-top: 8px;">
             <span>Outstanding Fee:</span>
             <span style="color: var(--warning);">₹${bill.feeAmount}</span>
           </div>
         </div>
 
-        <div style="display: flex; gap: 10px;">
-          <button class="btn btn-secondary" id="btn-print-invoice-pending" style="flex: 1; font-size: 0.9rem; padding: 8px;">
-            🖨️ Print Invoice
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn btn-outline btn-sm" id="btn-edit-fee-pending" style="flex: 1; min-width: 110px; padding: 8px;">
+            ✏️ Edit Fee
           </button>
-          <button class="btn btn-primary" id="btn-collect-payment" style="flex: 2; font-size: 0.9rem; padding: 8px; display: flex; justify-content: center; align-items: center; gap: 6px;">
+          <button class="btn btn-secondary btn-sm" id="btn-print-invoice-pending" style="flex: 1; min-width: 110px; padding: 8px;">
+            🖨️ Invoice Slip
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-collect-payment" style="flex: 2; min-width: 140px; padding: 8px; display: flex; justify-content: center; align-items: center; gap: 6px;">
             💵 Collect Payment
           </button>
         </div>
       </div>
     `;
     
+    document.getElementById('btn-edit-fee-pending').addEventListener('click', () => {
+      handleOpenEditFeeModal(bill);
+    });
     document.getElementById('btn-collect-payment').addEventListener('click', () => {
       collectPaymentForBill(bill.id);
     });
@@ -498,7 +977,7 @@ function renderActiveBillingDetail() {
           </div>
           <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
             <span style="color: var(--text-secondary);">Item Description:</span>
-            <strong>Uniform Set Package (3 Sets)</strong>
+            <strong>Uniform & Fee Package ${bill.otherFeePurpose ? `(${bill.otherFeePurpose})` : ''}</strong>
           </div>
           <div style="display: flex; justify-content: space-between; font-size: 1.25rem; font-weight: 700; color: var(--success); margin-top: 8px;">
             <span>Amount Collected:</span>
@@ -521,13 +1000,13 @@ function renderActiveBillingDetail() {
 // ----------------------------------------------------
 // Billing Database Actions
 // ----------------------------------------------------
-async function generateBillForStudent(studentId, amount) {
+async function generateBillForStudent(studentId, amount, yellowFee = 0, pinkFee = 0, sportsFee = 0, otherFee = 0, otherFeePurpose = '', otherFeeDetails = '') {
   try {
     const student = state.students.find(s => s.id === studentId);
     if (!student) return;
     const operator = state.currentUser ? state.currentUser.username : 'Cashier Desk';
     
-    await db.createBill(studentId, student.name, student.grade, student.branch, student.gender, amount, operator, student.fatherName, student.admissionNo);
+    await db.createBill(studentId, student.name, student.grade, student.branch, student.gender, amount, operator, student.fatherName, student.admissionNo, yellowFee, pinkFee, sportsFee, otherFee, otherFeePurpose, otherFeeDetails);
     showToast(`Bill Invoice generated successfully for ${student.name}`, 'success');
     refreshData();
   } catch (error) {
@@ -672,12 +1151,93 @@ function triggerIframeFallbackPrint(htmlString) {
   }
 }
 
+function getItemizedRowsHTML(bill) {
+  const gLower = (bill.grade || '').toLowerCase();
+  const isHighSchool = gLower.includes('9') || gLower.includes('10') || gLower.includes('11') || gLower.includes('12') ||
+                       gLower.includes('ix') || gLower.includes('x') || gLower.includes('xi') || gLower.includes('xii');
+
+  const yellowTitle = isHighSchool ? '🟨 Yellow Uniform Cloth Material' : '🟨 Yellow Uniform Set';
+  const yellowDesc = isHighSchool ? 'Unstitched Yellow Uniform Fabric Material' : 'Classroom Yellow Uniform Set';
+
+  const pinkTitle = isHighSchool ? '🩷 Pink / Red Uniform Cloth Material' : '🩷 Pink / Red Uniform Set';
+  const pinkDesc = isHighSchool ? 'Unstitched Pink / Red Uniform Fabric Material' : 'Classroom Pink / Red Uniform Set';
+
+  const sportsTitle = '🏃 Sports Uniform Set';
+  const sportsDesc = 'Stitched Sports Uniform Set';
+
+  let rows = '';
+  if (bill.yellowFee && bill.yellowFee > 0) {
+    rows += `
+      <tr>
+        <td>
+          <strong>${yellowTitle}</strong>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">${yellowDesc}</div>
+        </td>
+        <td style="text-align: center;">1 Unit</td>
+        <td style="text-align: right; font-weight: 600;">₹${bill.yellowFee}.00</td>
+      </tr>
+    `;
+  }
+  if (bill.pinkFee && bill.pinkFee > 0) {
+    rows += `
+      <tr>
+        <td>
+          <strong>${pinkTitle}</strong>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">${pinkDesc}</div>
+        </td>
+        <td style="text-align: center;">1 Unit</td>
+        <td style="text-align: right; font-weight: 600;">₹${bill.pinkFee}.00</td>
+      </tr>
+    `;
+  }
+  if (bill.sportsFee && bill.sportsFee > 0) {
+    rows += `
+      <tr>
+        <td>
+          <strong>${sportsTitle}</strong>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">${sportsDesc}</div>
+        </td>
+        <td style="text-align: center;">1 Set</td>
+        <td style="text-align: right; font-weight: 600;">₹${bill.sportsFee}.00</td>
+      </tr>
+    `;
+  }
+  if (bill.otherFee && bill.otherFee > 0) {
+    const oTitle = bill.otherFeePurpose ? `📝 Other Fee (${bill.otherFeePurpose})` : '📝 Other Fee (ECA / Trip / Activity)';
+    const oDesc = bill.otherFeeDetails || `Special Fee: ${bill.otherFeePurpose || 'ECA/Trip/Activity'}`;
+    rows += `
+      <tr>
+        <td>
+          <strong>${oTitle}</strong>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">${oDesc}</div>
+        </td>
+        <td style="text-align: center;">1 Unit</td>
+        <td style="text-align: right; font-weight: 600;">₹${bill.otherFee}.00</td>
+      </tr>
+    `;
+  }
+  if (!rows) {
+    rows = `
+      <tr>
+        <td>
+          <strong>Uniform Package Allocation</strong>
+          <div style="font-size: 10px; color: #666; margin-top: 2px;">Standard classroom and sports uniform allocation for ${bill.gender}.</div>
+        </td>
+        <td style="text-align: center;">1 Pack</td>
+        <td style="text-align: right; font-weight: 600;">₹${bill.feeAmount}.00</td>
+      </tr>
+    `;
+  }
+  return rows;
+}
+
 // PDF Invoice Print Export with Signature
 // ----------------------------------------------------
 function printInvoicePDF(bill) {
   const dateStr = new Date(bill.createdAt).toLocaleString();
   const paidDateStr = bill.paidAt ? new Date(bill.paidAt).toLocaleString() : 'N/A';
   const receiptType = bill.status === 'Paid' ? 'PAYMENT RECEIPT' : 'BILL INVOICE';
+  const itemRowsHTML = getItemizedRowsHTML(bill);
 
   const renderSingleInvoice = () => `
     <div class="invoice-card">
@@ -741,16 +1301,7 @@ function printInvoicePDF(bill) {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>
-              <strong>Uniform Package Allocation (3 Complete Sets)</strong>
-              <div style="font-size: 10px; color: #666; margin-top: 2px;">
-                Standard classroom shirts, bottoms, and sports uniform tailored for ${bill.gender}. Grade Category Fee.
-              </div>
-            </td>
-            <td style="text-align: center;">1 Pack</td>
-            <td style="text-align: right; font-weight: 600;">₹${bill.feeAmount}.00</td>
-          </tr>
+          ${itemRowsHTML}
         </tbody>
       </table>
 
@@ -792,29 +1343,35 @@ function printInvoicePDF(bill) {
       <style>
         @page {
           size: A4 portrait;
-          margin: 6mm 8mm;
+          margin: 3mm 5mm;
         }
         * {
           box-sizing: border-box;
         }
-        body {
+        html, body {
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
           color: #1a1a1a;
           padding: 0;
           margin: 0;
-          line-height: 1.3;
-          font-size: 12px;
+          line-height: 1.2;
+          font-size: 10px;
           background: #fff;
+          height: 100%;
+          overflow: hidden;
         }
         .page-wrapper {
           display: flex;
           flex-direction: column;
-          gap: 6px;
+          justify-content: space-between;
+          height: 100vh;
+          max-height: 290mm;
+          box-sizing: border-box;
+          padding: 0;
         }
         .invoice-card {
           border: 1px solid #cbd5e1;
-          border-radius: 6px;
-          padding: 14px 18px;
+          border-radius: 4px;
+          padding: 8px 12px;
           background: #fff;
           position: relative;
           box-shadow: none;
@@ -823,59 +1380,59 @@ function printInvoicePDF(bill) {
           display: flex;
           justify-content: space-between;
           border-bottom: 2px solid #6366f1;
-          padding-bottom: 8px;
-          margin-bottom: 10px;
+          padding-bottom: 2px;
+          margin-bottom: 4px;
         }
         .school-name {
-          font-size: 18px;
+          font-size: 14px;
           font-weight: 700;
           margin: 0;
           color: #4f46e5;
           letter-spacing: -0.5px;
         }
         .receipt-title {
-          font-size: 12px;
+          font-size: 10px;
           font-weight: 600;
           color: #666;
-          margin-top: 2px;
+          margin-top: 1px;
         }
         .invoice-meta {
           text-align: right;
         }
         .invoice-id {
-          font-size: 17px;
+          font-size: 13px;
           font-weight: 800;
           color: #1e1b4b;
-          margin-bottom: 3px;
+          margin-bottom: 1px;
           letter-spacing: 0.5px;
         }
         .meta-line {
-          font-size: 10.5px;
+          font-size: 9px;
           color: #555;
-          margin-bottom: 1px;
+          margin-bottom: 0px;
         }
         .details-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 6px;
           background: #f8fafc;
-          border-radius: 6px;
-          padding: 8px 12px;
-          margin-bottom: 10px;
+          border-radius: 4px;
+          padding: 4px 8px;
+          margin-bottom: 4px;
           border: 1px solid #e2e8f0;
         }
         .grid-col h4 {
-          margin: 0 0 4px 0;
+          margin: 0 0 2px 0;
           color: #64748b;
-          font-size: 10px;
+          font-size: 8.5px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
         .grid-line {
-          margin-bottom: 2px;
+          margin-bottom: 1px;
           display: flex;
           justify-content: space-between;
-          font-size: 11px;
+          font-size: 9.5px;
         }
         .grid-label {
           color: #666;
@@ -886,58 +1443,58 @@ function printInvoicePDF(bill) {
         .table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 10px;
+          margin-bottom: 4px;
         }
         .table th {
           border-bottom: 2px solid #e2e8f0;
-          padding: 6px 4px;
+          padding: 3px 4px;
           text-align: left;
           color: #64748b;
-          font-size: 10px;
+          font-size: 8.5px;
           text-transform: uppercase;
         }
         .table td {
           border-bottom: 1px solid #edf2f7;
-          padding: 6px 4px;
-          font-size: 11px;
+          padding: 3px 4px;
+          font-size: 9.5px;
         }
         .amount-summary {
           display: flex;
           justify-content: flex-end;
-          margin-bottom: 10px;
+          margin-bottom: 3px;
         }
         .amount-card {
-          width: 220px;
+          width: 180px;
           border-top: 1px solid #eee;
-          padding-top: 4px;
+          padding-top: 2px;
         }
         .summary-row {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 3px;
-          font-size: 11px;
+          margin-bottom: 1px;
+          font-size: 9.5px;
         }
         .summary-total {
           display: flex;
           justify-content: space-between;
-          font-size: 13px;
+          font-size: 11px;
           font-weight: 700;
           color: #4f46e5;
-          margin-top: 4px;
+          margin-top: 2px;
           border-top: 1px dashed #ddd;
-          padding-top: 4px;
+          padding-top: 2px;
         }
         .watermark {
           position: absolute;
-          top: 30%;
+          top: 25%;
           left: 25%;
-          font-size: 46px;
+          font-size: 38px;
           font-weight: 800;
           color: rgba(16, 185, 129, 0.07);
           transform: rotate(-20deg);
-          border: 6px solid rgba(16, 185, 129, 0.07);
-          padding: 6px 20px;
-          border-radius: 10px;
+          border: 5px solid rgba(16, 185, 129, 0.07);
+          padding: 4px 16px;
+          border-radius: 8px;
           pointer-events: none;
           letter-spacing: 2px;
           text-transform: uppercase;
@@ -947,56 +1504,67 @@ function printInvoicePDF(bill) {
           border-color: rgba(245, 158, 11, 0.07);
         }
         .signature-section {
-          margin-top: 14px;
+          margin-top: 3px;
           display: flex;
           justify-content: flex-end;
           align-items: flex-end;
         }
         .sig-box {
           text-align: center;
-          width: 170px;
+          width: 150px;
         }
         .sig-line {
           border-bottom: 1px solid #1a1a1a;
-          margin-bottom: 4px;
-          height: 18px;
+          margin-bottom: 2px;
+          height: 12px;
         }
         .sig-label {
-          font-size: 10px;
+          font-size: 8.5px;
           color: #666;
           font-weight: 500;
         }
         .cut-divider {
           text-align: center;
-          border-top: 2px dashed #94a3b8;
-          margin: 6px 0;
+          border-top: 1.5px dashed #94a3b8;
+          margin: 2px 0;
           position: relative;
           height: 1px;
         }
         .cut-label {
           position: absolute;
-          top: -9px;
+          top: -8px;
           left: 50%;
           transform: translateX(-50%);
           background: #fff;
-          padding: 0 10px;
-          font-size: 9.5px;
+          padding: 0 8px;
+          font-size: 8.5px;
           color: #64748b;
           font-weight: 600;
           letter-spacing: 1px;
           text-transform: uppercase;
         }
         @media print {
-          body {
+          html, body {
+            height: 100%;
+            margin: 0;
             padding: 0;
-            background: #fff;
+            overflow: hidden;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+          }
+          .page-wrapper {
+            height: 100%;
+            max-height: 290mm;
+            page-break-after: avoid;
+            page-break-inside: avoid;
           }
           .invoice-card {
             border: 1px dashed #cbd5e1;
             box-shadow: none;
+            page-break-inside: avoid;
           }
           .cut-divider {
-            margin: 8px 0;
+            margin: 2px 0;
           }
         }
       </style>
@@ -1043,7 +1611,7 @@ function exportAccountsLedgerCSV() {
 
   const csvRows = [];
   // CSV Headers
-  csvRows.push(['Bill ID', 'Created Timestamp', 'Paid Timestamp', 'Student Name', 'Grade', 'Branch', 'Gender', 'Fee Amount', 'Cashier', 'Status'].join(','));
+  csvRows.push(['Bill ID', 'Created Timestamp', 'Paid Timestamp', 'Student Name', 'Grade', 'Branch', 'Gender', 'Fee Amount', 'Yellow Fee', 'Pink Fee', 'Sports Fee', 'Other Fee', 'Other Fee Purpose', 'Other Fee Details', 'Cashier', 'Status'].join(','));
   
   filtered.forEach(b => {
     const row = [
@@ -1055,6 +1623,12 @@ function exportAccountsLedgerCSV() {
       b.branch,
       b.gender,
       b.feeAmount,
+      b.yellowFee || 0,
+      b.pinkFee || 0,
+      b.sportsFee || 0,
+      b.otherFee || 0,
+      `"${(b.otherFeePurpose || '').replace(/"/g, '""')}"`,
+      `"${(b.otherFeeDetails || '').replace(/"/g, '""')}"`,
       b.cashier,
       b.status
     ];
@@ -1068,6 +1642,42 @@ function exportAccountsLedgerCSV() {
   a.setAttribute('download', `uniform_billing_ledger_branch_${state.activeBranch}.csv`);
   a.click();
   showToast('Ledger CSV exported successfully.', 'success');
+}
+
+function handleOpenEditFeeModal(bill) {
+  const modal = document.getElementById('modal-edit-fee');
+  if (!modal) return;
+  document.getElementById('edit-fee-bill-id').value = bill.id || bill.billId || '';
+  document.getElementById('edit-fee-student-name').value = bill.studentName || '';
+  document.getElementById('edit-fee-amount-input').value = bill.feeAmount || 0;
+  modal.classList.add('active');
+}
+
+function handleCloseEditFeeModal() {
+  const modal = document.getElementById('modal-edit-fee');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleEditFeeSubmit(e) {
+  e.preventDefault();
+  const billId = document.getElementById('edit-fee-bill-id').value;
+  const newFee = document.getElementById('edit-fee-amount-input').value;
+  const currentUser = db.getCurrentCashier() || db.getCurrentAdmin();
+  const operatorName = currentUser ? (currentUser.username || currentUser.name || 'Cashier Desk') : 'Cashier Desk';
+
+  if (!billId || newFee === undefined || newFee === '') {
+    showToast('Invalid fee amount entered.', 'error');
+    return;
+  }
+
+  try {
+    await db.updateBillFee(billId, parseFloat(newFee), operatorName);
+    showToast(`Updated fee amount to ₹${newFee} for ${billId}`, 'success');
+    handleCloseEditFeeModal();
+    refreshData();
+  } catch (err) {
+    showToast('Failed to update fee: ' + err.message, 'error');
+  }
 }
 
 // ----------------------------------------------------
@@ -1099,7 +1709,7 @@ function closeModal() {
 // ----------------------------------------------------
 // Application Bootstrapping
 // ----------------------------------------------------
-window.addEventListener('DOMContentLoaded', async () => {
+async function initAccountsApp() {
   // Bind Login form
   if (DOM.cashierLoginForm) {
     DOM.cashierLoginForm.addEventListener('submit', handleCashierLogin);
@@ -1150,6 +1760,45 @@ window.addEventListener('DOMContentLoaded', async () => {
     DOM.btnExportLedgerCsv.addEventListener('click', exportAccountsLedgerCSV);
   }
 
+  const btnSaveFeeMatrix = document.getElementById('btn-save-fee-matrix');
+  if (btnSaveFeeMatrix) {
+    btnSaveFeeMatrix.addEventListener('click', saveGradeFeeMatrix);
+  }
+
+  const btnMatrixBoys = document.getElementById('btn-matrix-boys');
+  const btnMatrixGirls = document.getElementById('btn-matrix-girls');
+  if (btnMatrixBoys) {
+    btnMatrixBoys.addEventListener('click', () => {
+      state.activeMatrixGender = 'Boys';
+      renderGradeFeeMatrixTable();
+    });
+  }
+  if (btnMatrixGirls) {
+    btnMatrixGirls.addEventListener('click', () => {
+      state.activeMatrixGender = 'Girls';
+      renderGradeFeeMatrixTable();
+    });
+  }
+
+  // Edit Fee Modal Event Handlers
+  const btnCloseEditFee = document.getElementById('close-modal-edit-fee');
+  if (btnCloseEditFee) btnCloseEditFee.addEventListener('click', handleCloseEditFeeModal);
+
+  const btnCancelEditFee = document.getElementById('btn-cancel-edit-fee');
+  if (btnCancelEditFee) btnCancelEditFee.addEventListener('click', handleCloseEditFeeModal);
+
+  const formAddSpecialFee = document.getElementById('form-add-special-fee');
+  if (formAddSpecialFee) {
+    formAddSpecialFee.addEventListener('submit', handleAddSpecialFeeSubmit);
+  }
+
+  const btnClearAllSpecialFees = document.getElementById('btn-clear-all-special-fees');
+  if (btnClearAllSpecialFees) {
+    btnClearAllSpecialFees.addEventListener('click', handleClearAllSpecialFees);
+  }
+
+  initFeeSubTabs();
+
   // Navigation and authentication check
   initNavigation();
   await checkAuth();
@@ -1157,4 +1806,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Polling data updates to synchronize state
   refreshData();
   setInterval(refreshData, 10000);
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initAccountsApp);
+} else {
+  initAccountsApp();
+}

@@ -56,6 +56,7 @@ const DOM = {
   get currentUserPhone() { return document.getElementById('current-user-phone'); },
   get viewIssuer() { return document.getElementById('view-issuer'); },
   get viewStudents() { return document.getElementById('view-students'); },
+  get viewImportStudents() { return document.getElementById('view-import-students'); },
   get issuerSearchInput() { return document.getElementById('issuer-search-input'); },
   get issuerStudentScroll() { return document.getElementById('issuer-student-scroll'); },
   get issuerDetailEmpty() { return document.getElementById('issuer-detail-empty'); },
@@ -131,7 +132,7 @@ function navigateTo(viewId) {
   // Views List based on Page
   const views = isAdminPage 
     ? [DOM.viewDashboard, DOM.viewRequests, DOM.viewLogs, DOM.viewSettings, DOM.viewAdminStudents, DOM.viewBilling]
-    : [DOM.viewIssuer, DOM.viewStudents];
+    : [DOM.viewIssuer, DOM.viewStudents, DOM.viewImportStudents];
 
   views.forEach(view => {
     if (view) view.classList.remove('active');
@@ -147,6 +148,7 @@ function navigateTo(viewId) {
     if (viewId === 'dashboard') DOM.viewTitle.textContent = 'Admin Dashboard';
     else if (viewId === 'issuer') DOM.viewTitle.textContent = 'Uniform Issuer (Front)';
     else if (viewId === 'students') DOM.viewTitle.textContent = 'Student Registry';
+    else if (viewId === 'import-students') DOM.viewTitle.textContent = 'Import Student CSV/Excel';
     else if (viewId === 'requests') DOM.viewTitle.textContent = 'Sizing Exception Requests';
     else if (viewId === 'logs') DOM.viewTitle.textContent = 'Audit Transaction Logs';
     else if (viewId === 'settings') DOM.viewTitle.textContent = 'Portal Settings';
@@ -1425,11 +1427,20 @@ function renderAdminStudentsData(students) {
         <td>${getBadgeHTML(set2)}</td>
         <td>${getBadgeHTML(set3, true)}</td>
         <td>
-          <button class="btn btn-danger btn-sm btn-delete-student" style="padding: 2px 8px; font-size: 0.75rem;">
-            🗑️ Delete
-          </button>
+          <div style="display: flex; gap: 4px;">
+            <button class="btn btn-outline btn-sm btn-edit-student" style="padding: 2px 8px; font-size: 0.75rem;">
+              ✏️ Edit
+            </button>
+            <button class="btn btn-danger btn-sm btn-delete-student" style="padding: 2px 8px; font-size: 0.75rem;">
+              🗑️ Delete
+            </button>
+          </div>
         </td>
       `;
+
+      tr.querySelector('.btn-edit-student').addEventListener('click', () => {
+        handleOpenEditStudentModal(s);
+      });
 
       tr.querySelector('.btn-delete-student').addEventListener('click', async () => {
         if (confirm(`Are you sure you want to delete student "${s.name}" (${s.grade})?`)) {
@@ -2546,6 +2557,314 @@ function handleExportStudents() {
   showToast('Students database exported successfully!', 'success');
 }
 
+let pendingImportStudents = [];
+
+function downloadSampleStudentTemplate() {
+  const headers = ['Admission No', 'Student Name', 'Father Name', 'Branch', 'Gender', 'Grade / Class'];
+  const sampleRows = [
+    ['ADM-2026-001', 'Aarav Kumar', 'Rajesh Kumar', 'BBIS', 'Boys', 'Grade 5 - A'],
+    ['ADM-2026-002', 'Ananya Sharma', 'Suresh Sharma', 'BBMS', 'Girls', 'Grade 6 - B'],
+    ['ADM-2026-003', 'Rohan Verma', 'Mahesh Verma', 'BBIS', 'Boys', 'Grade 7 - A']
+  ];
+  
+  if (window.XLSX) {
+    const wsData = [headers, ...sampleRows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Students");
+    XLSX.writeFile(wb, "Student_Import_Template.xlsx");
+  } else {
+    exportToCSV("Student_Import_Template.csv", headers, sampleRows);
+  }
+}
+
+function handleOpenImportStudentsModal() {
+  const modal = document.getElementById('modal-import-students');
+  if (!modal) return;
+  pendingImportStudents = [];
+  
+  const fileInput = document.getElementById('student-import-file-input');
+  if (fileInput) fileInput.value = '';
+  
+  const previewContainer = document.getElementById('student-import-preview-container');
+  if (previewContainer) previewContainer.style.display = 'none';
+  
+  const btnConfirm = document.getElementById('btn-confirm-import-students');
+  if (btnConfirm) btnConfirm.disabled = true;
+
+  modal.classList.add('active');
+}
+
+function handleCloseImportStudentsModal() {
+  const modal = document.getElementById('modal-import-students');
+  if (modal) modal.classList.remove('active');
+  pendingImportStudents = [];
+}
+
+function handleStudentFileSelected(event) {
+  const file = event.target.files ? event.target.files[0] : null;
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      if (!window.XLSX) {
+        throw new Error('Excel parsing library not loaded. Please refresh the page.');
+      }
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (!rawRows || rawRows.length === 0) {
+        showToast('The uploaded spreadsheet contains no data rows.', 'error');
+        return;
+      }
+
+      pendingImportStudents = rawRows.map(row => {
+        const getVal = (keys) => {
+          for (const k of keys) {
+            const matchedKey = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.trim().toLowerCase());
+            if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== '') {
+              return String(row[matchedKey]).trim();
+            }
+          }
+          return '';
+        };
+
+        const admissionNo = getVal(['Admission No', 'Admission Number', 'admissionNo', 'admission_no', 'Student ID', 'ID']);
+        const name = getVal(['Student Name', 'Name', 'studentName', 'student_name']);
+        const fatherName = getVal(['Father Name', "Father's Name", 'fatherName', 'father_name']);
+        const branch = getVal(['Branch', 'branch']);
+        const gender = getVal(['Gender', 'gender']);
+        const grade = getVal(['Grade / Class', 'Grade', 'Class', 'grade', 'class']);
+
+        return { admissionNo, name, fatherName, branch, gender, grade };
+      }).filter(s => s.name && s.branch && s.grade);
+
+      if (pendingImportStudents.length === 0) {
+        showToast('No valid student records found. Required headers: Student Name, Branch, Grade / Class', 'error');
+        return;
+      }
+
+      const previewContainer = document.getElementById('student-import-preview-container');
+      const fileInfo = document.getElementById('import-file-info');
+      const tbody = document.getElementById('student-import-preview-tbody');
+      const btnConfirm = document.getElementById('btn-confirm-import-students');
+
+      if (fileInfo) fileInfo.textContent = `File "${file.name}" - ${pendingImportStudents.length} valid student record(s) ready`;
+      if (tbody) {
+        tbody.innerHTML = pendingImportStudents.slice(0, 10).map(s => `
+          <tr>
+            <td><strong>${s.admissionNo || '-'}</strong></td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.fatherName || '-'}</td>
+            <td>${s.branch}</td>
+            <td>${s.gender}</td>
+            <td>${s.grade}</td>
+          </tr>
+        `).join('');
+        if (pendingImportStudents.length > 10) {
+          tbody.innerHTML += `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); font-style: italic;">...and ${pendingImportStudents.length - 10} more rows</td></tr>`;
+        }
+      }
+
+      if (previewContainer) previewContainer.style.display = 'block';
+      if (btnConfirm) btnConfirm.disabled = false;
+
+    } catch (err) {
+      showToast('Failed to parse file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function handleConfirmImportStudents() {
+  if (!pendingImportStudents || pendingImportStudents.length === 0) {
+    showToast('No student data loaded to import.', 'error');
+    return;
+  }
+
+  const btnConfirm = document.getElementById('btn-confirm-import-students');
+  if (btnConfirm) {
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = '⏳ Processing Update...';
+  }
+
+  try {
+    const res = await db.bulkImportStudents(pendingImportStudents);
+    showToast(res.message || `Successfully processed ${pendingImportStudents.length} students!`, 'success');
+    handleCloseImportStudentsModal();
+    refreshData();
+  } catch (err) {
+    showToast('Import failed: ' + err.message, 'error');
+  } finally {
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = '🚀 Process Update & Import';
+    }
+  }
+}
+
+function handleOpenEditStudentModal(student) {
+  const modal = document.getElementById('modal-edit-student');
+  if (!modal) return;
+
+  document.getElementById('edit-student-id').value = student.id || student._id || '';
+  document.getElementById('edit-student-admission').value = student.admissionNo || '';
+  document.getElementById('edit-student-name').value = student.name || '';
+  document.getElementById('edit-student-father').value = student.fatherName || '';
+  document.getElementById('edit-student-branch').value = student.branch || 'BBIS';
+  document.getElementById('edit-student-gender').value = student.gender || 'Boys';
+  document.getElementById('edit-student-grade').value = student.grade || '';
+
+  modal.classList.add('active');
+}
+
+function handleCloseEditStudentModal() {
+  const modal = document.getElementById('modal-edit-student');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleEditStudentSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('edit-student-id').value;
+  const admissionNo = document.getElementById('edit-student-admission').value;
+  const name = document.getElementById('edit-student-name').value;
+  const fatherName = document.getElementById('edit-student-father').value;
+  const branch = document.getElementById('edit-student-branch').value;
+  const gender = document.getElementById('edit-student-gender').value;
+  const grade = document.getElementById('edit-student-grade').value;
+
+  if (!id || !name) {
+    showToast('Student ID and Name are required.', 'error');
+    return;
+  }
+
+  try {
+    await db.updateStudent(id, name, branch, gender, grade, fatherName, admissionNo);
+    showToast(`Updated details for ${name}`, 'success');
+    handleCloseEditStudentModal();
+    refreshData();
+  } catch (err) {
+    showToast('Failed to update student: ' + err.message, 'error');
+  }
+}
+
+let pendingStaffImportStudents = [];
+
+function handleStaffFileSelected(event) {
+  const file = event.target.files ? event.target.files[0] : null;
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      if (!window.XLSX) {
+        throw new Error('Excel parsing library not loaded. Please refresh the page.');
+      }
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      if (!rawRows || rawRows.length === 0) {
+        showToast('The uploaded spreadsheet contains no data rows.', 'error');
+        return;
+      }
+
+      pendingStaffImportStudents = rawRows.map(row => {
+        const getVal = (keys) => {
+          for (const k of keys) {
+            const matchedKey = Object.keys(row).find(rk => rk.trim().toLowerCase() === k.trim().toLowerCase());
+            if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== '') {
+              return String(row[matchedKey]).trim();
+            }
+          }
+          return '';
+        };
+
+        const admissionNo = getVal(['Admission No', 'Admission Number', 'admissionNo', 'admission_no', 'Student ID', 'ID']);
+        const name = getVal(['Student Name', 'Name', 'studentName', 'student_name']);
+        const fatherName = getVal(['Father Name', "Father's Name", 'fatherName', 'father_name']);
+        const branch = getVal(['Branch', 'branch']);
+        const gender = getVal(['Gender', 'gender']);
+        const grade = getVal(['Grade / Class', 'Grade', 'Class', 'grade', 'class']);
+
+        return { admissionNo, name, fatherName, branch, gender, grade };
+      }).filter(s => s.name && s.branch && s.grade);
+
+      if (pendingStaffImportStudents.length === 0) {
+        showToast('No valid student records found. Required headers: Student Name, Branch, Grade / Class', 'error');
+        return;
+      }
+
+      const previewContainer = document.getElementById('staff-import-preview-container');
+      const fileInfo = document.getElementById('staff-import-file-info');
+      const tbody = document.getElementById('staff-import-preview-tbody');
+
+      if (fileInfo) fileInfo.textContent = `Loaded File "${file.name}" - ${pendingStaffImportStudents.length} valid student record(s)`;
+      if (tbody) {
+        tbody.innerHTML = pendingStaffImportStudents.slice(0, 10).map(s => `
+          <tr>
+            <td><strong>${s.admissionNo || '-'}</strong></td>
+            <td><strong>${s.name}</strong></td>
+            <td>${s.fatherName || '-'}</td>
+            <td>${s.branch}</td>
+            <td>${s.gender}</td>
+            <td>${s.grade}</td>
+          </tr>
+        `).join('');
+        if (pendingStaffImportStudents.length > 10) {
+          tbody.innerHTML += `<tr><td colspan="6" style="text-align: center; color: var(--text-muted); font-style: italic;">...and ${pendingStaffImportStudents.length - 10} more rows</td></tr>`;
+        }
+      }
+
+      if (previewContainer) previewContainer.style.display = 'block';
+
+    } catch (err) {
+      showToast('Failed to parse file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+async function handleStaffConfirmImport() {
+  if (!pendingStaffImportStudents || pendingStaffImportStudents.length === 0) {
+    showToast('No student data loaded to import.', 'error');
+    return;
+  }
+
+  const btnConfirm = document.getElementById('btn-staff-confirm-import');
+  if (btnConfirm) {
+    btnConfirm.disabled = true;
+    btnConfirm.textContent = '⏳ Processing Update...';
+  }
+
+  try {
+    const res = await db.bulkImportStudents(pendingStaffImportStudents);
+    showToast(res.message || `Successfully processed ${pendingStaffImportStudents.length} students!`, 'success');
+    
+    pendingStaffImportStudents = [];
+    const previewContainer = document.getElementById('staff-import-preview-container');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const fileInput = document.getElementById('staff-student-import-file');
+    if (fileInput) fileInput.value = '';
+
+    refreshData();
+  } catch (err) {
+    showToast('Import failed: ' + err.message, 'error');
+  } finally {
+    if (btnConfirm) {
+      btnConfirm.disabled = false;
+      btnConfirm.textContent = '🚀 Process Update & Import Data';
+    }
+  }
+}
+
 function handleExportTransactions() {
   if (!state.transactions || state.transactions.length === 0) {
     showToast('No transaction logs to export', 'error');
@@ -2760,7 +3079,7 @@ function showReceiptModal(student, setNumber, status, topSize, bottomSize, sport
 // ----------------------------------------------------
 // Initial Bootstrapping
 // ----------------------------------------------------
-window.addEventListener('DOMContentLoaded', async () => {
+async function initMainApp() {
   // Bind form submissions depending on active page
   if (isAdminPage) {
     const adminLoginForm = document.getElementById('admin-login-form');
@@ -2780,6 +3099,121 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const btnExportStudents = document.getElementById('btn-export-students-csv');
     if (btnExportStudents) btnExportStudents.addEventListener('click', handleExportStudents);
+
+    // Student Import / Update Buttons
+    const btnOpenImportStudents = document.getElementById('btn-open-import-students');
+    if (btnOpenImportStudents) btnOpenImportStudents.addEventListener('click', handleOpenImportStudentsModal);
+
+    const btnCloseImportStudents = document.getElementById('close-modal-import-students');
+    if (btnCloseImportStudents) btnCloseImportStudents.addEventListener('click', handleCloseImportStudentsModal);
+
+    const btnCancelImportStudents = document.getElementById('btn-cancel-import-students');
+    if (btnCancelImportStudents) btnCancelImportStudents.addEventListener('click', handleCloseImportStudentsModal);
+
+    const btnDownloadTemplate = document.getElementById('btn-download-student-template');
+    if (btnDownloadTemplate) btnDownloadTemplate.addEventListener('click', downloadSampleStudentTemplate);
+
+    const btnDownloadTemplateModal = document.getElementById('btn-download-student-template-modal');
+    if (btnDownloadTemplateModal) btnDownloadTemplateModal.addEventListener('click', downloadSampleStudentTemplate);
+
+    const btnBrowseFile = document.getElementById('btn-browse-student-file');
+    const fileInput = document.getElementById('student-import-file-input');
+    if (btnBrowseFile && fileInput) {
+      btnBrowseFile.addEventListener('click', () => fileInput.click());
+    }
+    if (fileInput) {
+      fileInput.addEventListener('change', handleStudentFileSelected);
+    }
+
+    const dropzone = document.getElementById('student-dropzone');
+    if (dropzone && fileInput) {
+      dropzone.addEventListener('click', (e) => {
+        if (e.target !== btnBrowseFile) fileInput.click();
+      });
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = 'var(--primary)';
+        dropzone.style.background = '#eff6ff';
+      });
+      dropzone.addEventListener('dragleave', () => {
+        dropzone.style.borderColor = '#cbd5e1';
+        dropzone.style.background = '#f8fafc';
+      });
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#cbd5e1';
+        dropzone.style.background = '#f8fafc';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          fileInput.files = e.dataTransfer.files;
+          handleStudentFileSelected({ target: fileInput });
+        }
+      });
+    }
+
+    const btnConfirmImport = document.getElementById('btn-confirm-import-students');
+    if (btnConfirmImport) btnConfirmImport.addEventListener('click', handleConfirmImportStudents);
+
+    // Single Edit Student Modal
+    const btnCloseEditStudent = document.getElementById('close-modal-edit-student');
+    if (btnCloseEditStudent) btnCloseEditStudent.addEventListener('click', handleCloseEditStudentModal);
+
+    const btnCancelEditStudent = document.getElementById('btn-cancel-edit-student');
+    if (btnCancelEditStudent) btnCancelEditStudent.addEventListener('click', handleCloseEditStudentModal);
+
+    const editStudentForm = document.getElementById('edit-student-form');
+    if (editStudentForm) editStudentForm.addEventListener('submit', handleEditStudentSubmit);
+
+    // Staff Portal Student Import Event Handlers
+    const btnStaffTemplate = document.getElementById('btn-staff-download-template');
+    if (btnStaffTemplate) btnStaffTemplate.addEventListener('click', downloadSampleStudentTemplate);
+
+    const staffFileInput = document.getElementById('staff-student-import-file');
+    const btnStaffBrowse = document.getElementById('btn-staff-browse-file');
+    if (btnStaffBrowse && staffFileInput) {
+      btnStaffBrowse.addEventListener('click', () => staffFileInput.click());
+    }
+    if (staffFileInput) {
+      staffFileInput.addEventListener('change', handleStaffFileSelected);
+    }
+
+    const staffDropzone = document.getElementById('staff-student-dropzone');
+    if (staffDropzone && staffFileInput) {
+      staffDropzone.addEventListener('click', (e) => {
+        if (e.target !== btnStaffBrowse) staffFileInput.click();
+      });
+      staffDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        staffDropzone.style.borderColor = 'var(--primary)';
+        staffDropzone.style.background = '#eff6ff';
+      });
+      staffDropzone.addEventListener('dragleave', () => {
+        staffDropzone.style.borderColor = '#cbd5e1';
+        staffDropzone.style.background = '#f8fafc';
+      });
+      staffDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        staffDropzone.style.borderColor = '#cbd5e1';
+        staffDropzone.style.background = '#f8fafc';
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          staffFileInput.files = e.dataTransfer.files;
+          handleStaffFileSelected({ target: staffFileInput });
+        }
+      });
+    }
+
+    const btnStaffClear = document.getElementById('btn-staff-clear-file');
+    if (btnStaffClear) {
+      btnStaffClear.addEventListener('click', () => {
+        pendingStaffImportStudents = [];
+        const previewContainer = document.getElementById('staff-import-preview-container');
+        if (previewContainer) previewContainer.style.display = 'none';
+        if (staffFileInput) staffFileInput.value = '';
+        showToast('File cleared.', 'info');
+      });
+    }
+
+    const btnStaffConfirm = document.getElementById('btn-staff-confirm-import');
+    if (btnStaffConfirm) btnStaffConfirm.addEventListener('click', handleStaffConfirmImport);
 
     const btnExportLogs = document.getElementById('btn-export-transactions-csv');
     if (btnExportLogs) btnExportLogs.addEventListener('click', handleExportTransactions);
@@ -3009,4 +3443,10 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Authenticate user
   await checkAuth();
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initMainApp);
+} else {
+  initMainApp();
+}

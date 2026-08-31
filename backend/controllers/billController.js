@@ -15,11 +15,19 @@ const getBills = async (req, res) => {
 // @route   POST /api/bills
 const createBill = async (req, res) => {
   try {
-    const { studentId, studentName, grade, branch, gender, feeAmount, amount, cashier, operator, fatherName, admissionNo } = req.body;
+    const { studentId, studentName, grade, branch, gender, feeAmount, amount, cashier, operator, fatherName, admissionNo, yellowFee, pinkFee, sportsFee, otherFee, otherFeePurpose, otherFeeDetails } = req.body;
     
-    const valFee = feeAmount !== undefined ? feeAmount : amount;
-    if (!studentId || !studentName || valFee === undefined) {
-      return res.status(400).json({ success: false, message: 'studentId, studentName, and feeAmount are required' });
+    const yFee = parseFloat(yellowFee) || 0;
+    const pFee = parseFloat(pinkFee) || 0;
+    const sFee = parseFloat(sportsFee) || 0;
+    const oFee = parseFloat(otherFee) || 0;
+    const calcTotal = yFee + pFee + sFee + oFee;
+
+    const valFee = (feeAmount !== undefined ? feeAmount : amount);
+    const finalFee = (calcTotal > 0 && valFee === undefined) ? calcTotal : (valFee !== undefined ? parseFloat(valFee) : calcTotal);
+
+    if (!studentId || !studentName) {
+      return res.status(400).json({ success: false, message: 'studentId and studentName are required' });
     }
 
     const sequentialBills = await Bill.find({ billId: /^BILL-\d+$/i });
@@ -44,7 +52,13 @@ const createBill = async (req, res) => {
       gender: gender || '',
       fatherName: fatherName || '',
       admissionNo: admissionNo || '',
-      feeAmount: parseFloat(valFee) || 0,
+      feeAmount: finalFee,
+      yellowFee: yFee,
+      pinkFee: pFee,
+      sportsFee: sFee,
+      otherFee: oFee,
+      otherFeePurpose: otherFeePurpose || '',
+      otherFeeDetails: otherFeeDetails || '',
       status: 'Pending',
       cashier: operator || cashier || 'Cashier Desk',
     });
@@ -118,10 +132,49 @@ const deleteAllBills = async (req, res) => {
   }
 };
 
+// @desc    Update bill details (e.g. fee amount)
+// @route   PUT /api/bills/:id
+const updateBill = async (req, res) => {
+  try {
+    const { feeAmount, amount, cashier, operator } = req.body;
+    const searchId = req.params.id;
+
+    const queryConditions = [{ billId: searchId }];
+    if (searchId && searchId.match(/^[0-9a-fA-F]{24}$/)) {
+      queryConditions.push({ _id: searchId });
+    }
+
+    let bill = await Bill.findOne({ $or: queryConditions });
+
+    if (!bill) {
+      bill = await Bill.findOne({ billId: { $regex: new RegExp(`^${searchId}$`, 'i') } });
+    }
+
+    if (!bill) {
+      return res.status(404).json({ success: false, message: `Bill not found with ID ${searchId}` });
+    }
+
+    const newFee = feeAmount !== undefined ? feeAmount : amount;
+    if (newFee !== undefined) {
+      bill.feeAmount = parseFloat(newFee) || 0;
+    }
+    if (operator || cashier) {
+      bill.cashier = operator || cashier;
+    }
+
+    await bill.save();
+    res.status(200).json({ success: true, data: bill });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getBills,
   createBill,
   payBill,
+  updateBill,
   deleteBill,
   deleteAllBills,
 };
+

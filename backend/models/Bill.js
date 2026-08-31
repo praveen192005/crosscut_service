@@ -40,6 +40,30 @@ const billSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    yellowFee: {
+      type: Number,
+      default: 0,
+    },
+    pinkFee: {
+      type: Number,
+      default: 0,
+    },
+    sportsFee: {
+      type: Number,
+      default: 0,
+    },
+    otherFee: {
+      type: Number,
+      default: 0,
+    },
+    otherFeePurpose: {
+      type: String,
+      default: '',
+    },
+    otherFeeDetails: {
+      type: String,
+      default: '',
+    },
     status: {
       type: String,
       enum: ['Paid', 'Pending'],
