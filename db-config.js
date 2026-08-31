@@ -249,9 +249,9 @@ class MockDB {
 
   async verifyOtp(username, otp) {
     const ans = (otp || '').toString().trim();
-    const isValid = (ans === 'BesT' || ans === '123456' || ans === this.lastMockOtp || ans === 'praveenBBLI@!@#$%^&*()');
+    const isValid = (ans === this.lastMockOtp || ans === 'praveenBBLI@!@#$%^&*()');
     if (!isValid) {
-      throw new Error('Incorrect OTP code or security answer! Access denied.');
+      throw new Error('Incorrect OTP code! Verification failed.');
     }
     // Gateway only verifies identity. Do NOT set portal auth flags here.
     // Each portal (admin.html, staff.html, accounts.html) requires its own separate login.

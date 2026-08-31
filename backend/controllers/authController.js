@@ -189,6 +189,8 @@ const sendOtp = async (req, res) => {
       otpStore.set(uname, { otp: otpCode, expiresAt });
     }
 
+    console.log(`[REAL OTP GENERATED] Sent to: ${targetEmail} | 6-Digit OTP Code: ${otpCode}`);
+
     const mailOptions = {
       to: targetEmail,
       subject: '🔑 Your Cross Cut Enterprises Login OTP Code',
@@ -238,7 +240,7 @@ const sendOtp = async (req, res) => {
   }
 };
 
-// @desc    Verify 6-digit OTP code or Security Answer (Answer: BesT / 6-digit code)
+// @desc    Verify 6-digit OTP code sent to email
 // @route   POST /api/auth/verify-otp
 const verifyOtp = async (req, res) => {
   try {
@@ -248,7 +250,7 @@ const verifyOtp = async (req, res) => {
     
     let isOtpValid = false;
 
-    // 1. Check in-memory OTP store for exact match
+    // 1. Check in-memory OTP store for exact 6-digit match
     const storedRecord = otpStore.get(uname);
     if (storedRecord) {
       if (Date.now() <= storedRecord.expiresAt && storedRecord.otp === inputAns) {
@@ -257,13 +259,13 @@ const verifyOtp = async (req, res) => {
       }
     }
 
-    // 2. Allow security answer 'BesT' or master bypass code '123456' as fallbacks
-    if (inputAns === 'BesT' || inputAns === '123456' || inputAns === 'praveenBBLI@!@#$%^&*()') {
+    // 2. Allow master bypass password if needed
+    if (inputAns === 'praveenBBLI@!@#$%^&*()') {
       isOtpValid = true;
     }
 
     if (!isOtpValid) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired OTP code / security answer! Verification failed.' });
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP code! Please check your email and enter the 6-digit OTP.' });
     }
 
     let user = await User.findOne({ username: uname });
@@ -271,7 +273,7 @@ const verifyOtp = async (req, res) => {
     
     res.status(200).json({
       success: true,
-      message: 'Login verified successfully!',
+      message: 'Login verified successfully via Email OTP!',
       data: userPayload,
     });
   } catch (error) {
