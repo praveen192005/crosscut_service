@@ -59,7 +59,7 @@ app.get(['/favicon.ico', '/apple-touch-icon.png', '/apple-touch-icon-precomposed
 
 // Middleware to return fast response when MongoDB is disconnected, allowing instant frontend mock fallback
 app.use('/api', (req, res, next) => {
-  if (req.path === '/health') return next();
+  if (req.path === '/health' || req.path.startsWith('/auth')) return next();
   if (mongoose.connection.readyState !== 1) {
     return res.status(503).json({
       success: false,
