@@ -106,13 +106,13 @@ const createTransporter = () => {
   const pass = rawPass.replace(/\s+/g, ''); // Strip any space from Google App Password
 
   const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.EMAIL_PORT || '587', 10);
-  const secure = process.env.EMAIL_SECURE === 'true' || port === 465;
+  const port = parseInt(process.env.EMAIL_PORT || '465', 10);
+  const secure = process.env.EMAIL_SECURE ? (process.env.EMAIL_SECURE === 'true') : (port === 465);
 
   return nodemailer.createTransport({
     host: host,
     port: port,
-    secure: secure, // false for 587 (STARTTLS), true for 465
+    secure: secure, // true for 465 (SSL direct socket), false for 587
     auth: { user, pass },
     tls: {
       rejectUnauthorized: false
