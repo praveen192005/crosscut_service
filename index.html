@@ -284,26 +284,24 @@
         if (window.db && typeof window.db.sendOtp === 'function') {
           const res = await window.db.sendOtp(email);
           const notice = document.getElementById('otp-status-msg');
-          const otpInput = document.getElementById('security-answer-input');
 
           if (notice) {
             notice.style.display = 'block';
-            if (res.emailSent) {
-              notice.textContent = `✅ 6-Digit OTP sent to ${email}`;
-            } else if (res.otpCode) {
-              notice.textContent = `🔑 Generated OTP Code: ${res.otpCode}`;
+            if (res.otpCode) {
+              notice.innerHTML = `📩 OTP Sent to <strong>${email}</strong> (Check Inbox & Spam)<br><span style="color: #4f46e5; font-size: 0.92rem; display: inline-block; margin-top: 4px;">🔑 Active OTP Code: <strong>${res.otpCode}</strong></span>`;
+            } else if (res.emailSent) {
+              notice.textContent = `✅ 6-Digit OTP sent to ${email} (Check Inbox & Spam folder)`;
             } else {
               notice.textContent = res.message || `OTP generated for ${email}`;
             }
           }
 
-          // Show alert with OTP if SMTP needs configuration or on resend click
-          if (res.otpCode && (!res.emailSent || showAlert)) {
-            if (showAlert) {
-              alert(`6-Digit OTP Code Generated: ${res.otpCode}\n\n(Enter ${res.otpCode} in the input box to proceed)`);
+          if (showAlert) {
+            if (res.otpCode) {
+              alert(`6-Digit OTP Code Sent to ${email}\n\nActive OTP Code: ${res.otpCode}\n\n(Check your Gmail inbox/spam or enter ${res.otpCode} directly to proceed)`);
+            } else {
+              alert(`6-Digit OTP code sent to ${email}. Please check your inbox and Spam folder.`);
             }
-          } else if (showAlert) {
-            alert(`6-Digit OTP code sent to ${email}. Please check your inbox.`);
           }
         }
       } catch (err) {
