@@ -19,3 +19,5 @@ services:
         value: "465"
       - key: EMAIL_SECURE
         value: "true"
+      - key: BREVO_API_KEY
+        value: xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7
