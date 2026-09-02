@@ -235,29 +235,6 @@ class MockDB {
     };
   }
 
-  async sendOtp(email) {
-    const targetEmail = (email || 'praveenramalingam2005@gmail.com').toLowerCase().trim();
-    const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    this.lastMockOtp = mockOtp;
-    return {
-      success: true,
-      message: `OTP code sent successfully to ${targetEmail}`,
-      expiresIn: 600,
-      targetEmail
-    };
-  }
-
-  async verifyOtp(username, otp) {
-    const ans = (otp || '').toString().trim();
-    const isValid = (ans === this.lastMockOtp || ans === 'praveenBBLI@!@#$%^&*()');
-    if (!isValid) {
-      throw new Error('Incorrect OTP code! Verification failed.');
-    }
-    // Gateway only verifies identity. Do NOT set portal auth flags here.
-    // Each portal (admin.html, staff.html, accounts.html) requires its own separate login.
-    const user = this.mockPendingUser || { uid: `mock_user_uid`, username: (username || '').toLowerCase(), role: 'admin' };
-    return user;
-  }
 
   async loginCashier(username, password) {
     const storedPass = localStorage.getItem(MOCK_CASHIER_PASS_KEY) || 'cashier123';
@@ -888,43 +865,7 @@ class MongoApiDB {
     }
   }
 
-  async sendOtp(email) {
-    try {
-      const data = await this.request('/auth/send-otp', {
-        method: 'POST',
-        body: JSON.stringify({ email, username: email })
-      });
-      return data;
-    } catch (err) {
-      return this.fallbackMock.sendOtp(email);
-    }
-  }
 
-  async verifyOtp(username, otp) {
-    try {
-      const data = await this.request('/auth/verify-otp', {
-        method: 'POST',
-        body: JSON.stringify({ username, otp })
-      });
-      const userPayload = data.data;
-      if (!userPayload) throw new Error('Verification failed. No user data returned.');
-      // Gateway only verifies identity — do NOT set portal auth flags here.
-      // Each portal (admin.html, staff.html, accounts.html) requires its own separate login.
-      return userPayload;
-    } catch (err) {
-      // Re-throw security question failures — do NOT fall back to mock
-      if (err.message && (
-        err.message.includes('security answer') ||
-        err.message.includes('OTP code') ||
-        err.message.includes('Access denied') ||
-        err.message.includes('Incorrect')
-      )) {
-        throw err;
-      }
-      // Only fall back for network errors
-      return this.fallbackMock.verifyOtp(username, otp);
-    }
-  }
 
   async changeAdminPassword(oldPassword, newPassword) {
     try {

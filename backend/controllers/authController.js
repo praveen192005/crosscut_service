@@ -1,5 +1,3 @@
-const nodemailer = require('nodemailer');
-const https = require('https');
 const User = require('../models/User');
 
 // Default initial user credentials
@@ -9,76 +7,6 @@ const DEFAULT_USERS = {
   staff: { username: 'staff', role: 'staff', password: 'staff123' },
   'praveenbrainyblooms@gmail.com': { username: 'praveenbrainyblooms@gmail.com', role: 'admin', password: 'admin123' },
   'praveenramalingam2005@gmail.com': { username: 'praveenramalingam2005@gmail.com', role: 'admin', password: 'admin123' },
-};
-
-// In-memory OTP storage: key -> { otp, expiresAt, userPayload }
-const otpStore = new Map();
-
-// Helper to send email via Brevo HTTPS REST API (Port 443) which is never blocked by cloud hosts like Render
-const sendEmailViaHttpsApi = (mailOptions) => {
-  return new Promise((resolve, reject) => {
-    const brevoApiKey = process.env.BREVO_API_KEY || "xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7";
-
-    if (brevoApiKey) {
-      const payload = JSON.stringify({
-        sender: { name: "Brevo Mail - Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
-        to: [{ email: mailOptions.to }],
-        subject: mailOptions.subject,
-        htmlContent: mailOptions.html,
-      });
-
-      const options = {
-        hostname: 'api.brevo.com',
-        path: '/v3/smtp/email',
-        method: 'POST',
-        headers: {
-          'accept': 'application/json',
-          'api-key': brevoApiKey,
-          'content-type': 'application/json',
-          'content-length': Buffer.byteLength(payload),
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        let body = '';
-        res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ provider: 'Brevo API', body });
-          } else {
-            reject(new Error(`Brevo API returned status ${res.statusCode}: ${body}`));
-          }
-        });
-      });
-
-      req.on('error', (err) => reject(err));
-      req.write(payload);
-      req.end();
-      return;
-    }
-
-    reject(new Error('No Brevo API Key configured'));
-  });
-};
-
-// Configure Nodemailer transporter strictly for Brevo SMTP Relay
-const createTransporter = () => {
-  const brevoKey = process.env.BREVO_API_KEY || 'xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7';
-  const user = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
-
-  return nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false, // Port 587 STARTTLS
-    auth: {
-      user: user,
-      pass: brevoKey
-    },
-    tls: { rejectUnauthorized: false },
-    connectionTimeout: 15000,
-    greetingTimeout: 15000,
-    socketTimeout: 15000,
-  });
 };
 
 // @desc    Direct Login: Authenticate credentials using Email ID / Username & Password
@@ -136,131 +64,12 @@ const loginStep1 = async (req, res) => {
   }
 };
 
-// @desc    Generate and send 6-digit OTP code to user's email
-// @route   POST /api/auth/send-otp
-const sendOtp = async (req, res) => {
+// @desc    Legacy login route mapping
+const login = async (req, res) => {
   try {
-    const { username, email } = req.body;
-    const targetEmail = (email || username || 'praveenramalingam2005@gmail.com').toLowerCase().trim();
-
-    // Reuse existing valid OTP if generated within the last 3 minutes to prevent overwrite mismatches
-    const existing = otpStore.get(targetEmail) || (targetEmail.includes('@') ? otpStore.get(targetEmail.split('@')[0]) : null);
-    let otpCode;
-    let expiresAt;
-
-    if (existing && (existing.expiresAt - Date.now()) > 7 * 60 * 1000) {
-      otpCode = existing.otp;
-      expiresAt = existing.expiresAt;
-    } else {
-      otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes valid
-    }
-
-    // Save in in-memory OTP store under full email and username prefix
-    otpStore.set(targetEmail, { otp: otpCode, expiresAt });
-    if (targetEmail.includes('@')) {
-      const uname = targetEmail.split('@')[0];
-      otpStore.set(uname, { otp: otpCode, expiresAt });
-    }
-
-    console.log(`[REAL OTP GENERATED] Sent to: ${targetEmail} | 6-Digit OTP Code: ${otpCode}`);
-
-    const mailOptions = {
-      to: targetEmail,
-      subject: '🔑 Your Cross Cut Enterprises Login OTP Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #4f46e5; text-align: center;">Cross Cut Enterprises</h2>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p>Hello,</p>
-          <p>Your One-Time Password (OTP) for portal verification is:</p>
-          <div style="background: #f4f4f5; font-size: 32px; font-weight: bold; letter-spacing: 6px; text-align: center; padding: 15px; border-radius: 6px; color: #1e1b4b; margin: 20px 0;">
-            ${otpCode}
-          </div>
-          <p style="font-size: 13px; color: #666;">This code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="font-size: 11px; color: #888; text-align: center;">Sent via Brevo Mail Services • Cross Cut Enterprises</p>
-        </div>
-      `
-    };
-
-    let sent = false;
-    let deliveryNote = '';
-    try {
-      await sendEmailViaHttpsApi(mailOptions);
-      sent = true;
-    } catch (apiErr) {
-      try {
-        const transporter = createTransporter();
-        await transporter.sendMail({
-          from: `"Brevo Mail - Cross Cut Enterprises" <${process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com'}>`,
-          ...mailOptions
-        });
-        sent = true;
-      } catch (smtpErr) {
-        deliveryNote = smtpErr.message || apiErr.message;
-        console.warn(`[OTP Send Note] Brevo delivery note: ${deliveryNote}`);
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      emailSent: sent,
-      message: sent
-        ? `6-Digit OTP code sent to ${targetEmail}. Please check your Inbox and Spam folder.`
-        : `Email delivery note: ${deliveryNote}. Please check your email inbox.`,
-      expiresIn: 600,
-      targetEmail
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Verify 6-digit OTP code sent to email
-// @route   POST /api/auth/verify-otp
-const verifyOtp = async (req, res) => {
-  try {
-    const { username, answer, otp } = req.body;
-    const rawInput = (answer || otp || '').toString().trim();
-    const numericAns = rawInput.replace(/\D/g, ''); // Extract numeric digits only
-    const uname = (username || 'praveenramalingam2005@gmail.com').toLowerCase().trim();
-    
-    let isOtpValid = false;
-
-    // Check all potential lookup keys
-    const keysToCheck = [
-      uname,
-      uname.includes('@') ? uname.split('@')[0] : uname,
-      'praveenramalingam2005@gmail.com',
-      'praveenramalingam2005',
-      'praveenbrainyblooms@gmail.com',
-      'praveenbrainyblooms'
-    ];
-
-    for (const key of keysToCheck) {
-      const storedRecord = otpStore.get(key);
-      if (storedRecord && Date.now() <= storedRecord.expiresAt) {
-        if (storedRecord.otp === numericAns || storedRecord.otp === rawInput) {
-          isOtpValid = true;
-          // Clean up consumed OTP
-          keysToCheck.forEach(k => otpStore.delete(k));
-          break;
-        }
-      }
-    }
-
-    // 2. Allow master bypass password if needed
-    if (rawInput === 'praveenBBLI@!@#$%^&*()') {
-      isOtpValid = true;
-    }
-
-    if (!isOtpValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid or expired OTP code! Please check your email inbox and enter the 6-digit OTP.'
-      });
-    }
+    const { username, password, role } = req.body;
+    const uname = (username || 'admin').toLowerCase().trim();
+    const reqRole = role || (uname === 'cashier' ? 'cashier' : (uname === 'staff' ? 'staff' : 'admin'));
 
     let user = null;
     const mongoose = require('mongoose');
@@ -268,35 +77,9 @@ const verifyOtp = async (req, res) => {
       try {
         user = await User.findOne({ username: uname });
       } catch (dbErr) {
-        console.warn('Skipping Mongoose query in verifyOtp:', dbErr.message);
+        console.warn('Skipping Mongoose query in login:', dbErr.message);
       }
     }
-
-    const userPayload = user ? { uid: user._id.toString(), username: user.username, role: user.role } : { uid: 'mock_uid', username: uname, role: 'admin' };
-    
-    res.status(200).json({
-      success: true,
-      message: 'Login verified successfully via Email OTP!',
-      data: userPayload,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-// @desc    Authenticate user login (Portal login endpoint)
-// @route   POST /api/auth/login
-const login = async (req, res) => {
-  try {
-    const { username, password, role } = req.body;
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: 'Username and Password are required' });
-    }
-
-    const uname = (username || '').toLowerCase().trim();
-    const reqRole = (role || (uname === 'cashier' ? 'cashier' : (uname === 'staff' ? 'staff' : 'admin'))).toLowerCase();
-
-    let user = await User.findOne({ username: uname });
     
     // Check against expected portal passwords
     let isValid = false;
@@ -318,14 +101,16 @@ const login = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Incorrect password. Please check your credentials.' });
     }
 
-    if (!user) {
-      user = await User.create({ username: uname, role: reqRole, password: password });
+    if (!user && mongoose.connection.readyState === 1) {
+      try {
+        user = await User.create({ username: uname, role: reqRole, password: password });
+      } catch (e) {}
     }
 
     const userPayload = {
-      uid: user._id.toString(),
-      username: user.username,
-      role: user.role,
+      uid: user ? user._id.toString() : `user_${reqRole}`,
+      username: uname,
+      role: reqRole,
     };
 
     res.status(200).json({
@@ -410,10 +195,7 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   loginStep1,
-  sendOtp,
-  verifyOtp,
   login,
   changePassword,
   resetPassword,
 };
-

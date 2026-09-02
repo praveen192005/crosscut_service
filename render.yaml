@@ -9,13 +9,3 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: EMAIL_USER
-        value: praveenramalingam2005@gmail.com
-      - key: EMAIL_HOST
-        value: smtp-relay.brevo.com
-      - key: EMAIL_PORT
-        value: "587"
-      - key: EMAIL_SECURE
-        value: "false"
-      - key: BREVO_API_KEY
-        value: xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7

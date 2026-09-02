@@ -278,111 +278,7 @@
       return false;
     }
 
-    async function requestEmailOtp(showAlert = true) {
-      const email = window.pendingUsername || 'praveenramalingam2005@gmail.com';
-      const btn = document.getElementById('btn-resend-otp');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = 'Sending OTP...';
-      }
-      try {
-        if (window.db && typeof window.db.sendOtp === 'function') {
-          const res = await window.db.sendOtp(email);
-          const notice = document.getElementById('otp-status-msg');
 
-          if (notice) {
-            notice.style.display = 'block';
-            notice.innerHTML = `📩 6-Digit OTP sent to <strong>${email}</strong>.<br><small style="color: #64748b;">Please check your Gmail Inbox & Spam folder.</small>`;
-          }
-
-          if (showAlert) {
-            alert(`📩 6-Digit OTP Code sent to ${email}.\n\nPlease check your Inbox and Spam folder.`);
-          }
-        }
-      } catch (err) {
-        console.warn('Send OTP note:', err);
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = '📩 Resend OTP Code to Email';
-        }
-      }
-    }
-
-    async function verifySecurityQuestion(e) {
-      if (e) e.preventDefault();
-      const ansInput = document.getElementById('security-answer-input');
-      const ans = ansInput ? ansInput.value.trim() : '';
-
-      if (!ans) {
-        alert('Please enter your 6-digit OTP code.');
-        return false;
-      }
-
-      const btn = document.getElementById('btn-verify-security');
-      if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = 'Verifying OTP...';
-      }
-
-      try {
-        // Verify strictly with backend 6-digit OTP service
-        if (window.db && typeof window.db.verifyOtp === 'function') {
-          await window.db.verifyOtp(window.pendingUsername || 'praveenramalingam2005@gmail.com', ans);
-        }
-
-        // Gateway verification complete — clear ALL portal auth flags.
-        // Each portal MUST ask for its own password separately.
-        sessionStorage.removeItem('bb_stock_explicit_admin_auth');
-        sessionStorage.removeItem('bb_stock_explicit_staff_auth');
-        sessionStorage.removeItem('bb_stock_explicit_cashier_auth');
-        sessionStorage.removeItem('bb_stock_admin_user');
-        sessionStorage.removeItem('bb_stock_current_user');
-        sessionStorage.removeItem('bb_stock_cashier_user');
-
-        const userPayload = window.pendingUserPayload || { uid: 'user_admin', username: window.pendingUsername || 'praveenramalingam2005@gmail.com', role: 'admin' };
-        sessionStorage.setItem('bb_stock_gateway_verified', 'true');
-        sessionStorage.setItem('bb_stock_gateway_user', JSON.stringify(userPayload));
-
-        // Display Landing Page Hub (Step 3)
-        const step2 = document.getElementById('step2-container');
-        const step3 = document.getElementById('step3-container');
-        const badge = document.getElementById('portal-user-badge');
-        const gatewayContainer = document.querySelector('.gateway-container');
-
-        if (badge) badge.textContent = userPayload.username || window.pendingUsername || 'User';
-        if (step2) step2.style.display = 'none';
-        if (step3) step3.style.display = 'block';
-        if (gatewayContainer) gatewayContainer.style.maxWidth = '580px';
-
-      } catch (err) {
-        alert(err.message || 'Incorrect OTP code! Access denied.');
-        if (ansInput) {
-          ansInput.value = '';
-          ansInput.focus();
-        }
-      } finally {
-        if (btn) {
-          btn.disabled = false;
-          btn.innerHTML = 'Verify OTP & Proceed 🔓';
-        }
-      }
-
-      return false;
-    }
-
-    function cancelStep2() {
-      // Clear any partial gateway state
-      sessionStorage.removeItem('bb_stock_gateway_verified');
-      sessionStorage.removeItem('bb_stock_gateway_user');
-      window.pendingUserPayload = null;
-      window.pendingUsername = null;
-      window.pendingUsername = null;
-      const step1 = document.getElementById('step1-container');
-      const step2 = document.getElementById('step2-container');
-      if (step2) step2.style.display = 'none';
-      if (step1) step1.style.display = 'block';
-    }
 
     function handleSignoutHub() {
       // Clear all session data completely
@@ -472,37 +368,7 @@
         </form>
       </div>
 
-      <!-- STEP 2: Real Email OTP Verification -->
-      <div id="step2-container" style="display: none;">
-        <div style="text-align: center; margin-bottom: 10px;">
-          <span style="background: rgba(99, 102, 241, 0.12); color: #4f46e5; padding: 4px 14px; border-radius: 20px; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Email OTP Verification</span>
-        </div>
-        <h2 class="portal-title">Enter 6-Digit Email OTP</h2>
-        
-        <p id="otp-target-email-notice" style="font-size: 0.85rem; color: #475569; text-align: center; margin-bottom: 12px; font-weight: 600;">
-          Verification code sent to your email inbox
-        </p>
 
-        <form id="security-question-form" class="gateway-form" onsubmit="verifySecurityQuestion(event); return false;">
-          <div class="form-group" style="text-align: left; margin-bottom: 18px;">
-            <label for="security-answer-input" style="font-weight: 600; color: #1e293b; font-size: 0.9rem; display: block; margin-bottom: 8px;">
-              🔑 Enter 6-Digit Email OTP Code:
-            </label>
-            <input type="text" id="security-answer-input" class="input-ctrl" placeholder="e.g. 482910" required maxlength="10" style="font-size: 1.2rem; letter-spacing: 3px; text-align: center; padding: 10px 14px; font-weight: 700;">
-            <small id="otp-status-msg" style="color: #059669; font-size: 0.78rem; margin-top: 6px; display: none; text-align: center; font-weight: 600;"></small>
-            <small style="color: #64748b; font-size: 0.75rem; margin-top: 6px; display: block; text-align: center;">Enter the 6-digit OTP code sent to your email inbox (e.g. praveenramalingam2005@gmail.com).</small>
-          </div>
-          <button type="submit" id="btn-verify-security" class="btn btn-primary" style="width: 100%;" onclick="verifySecurityQuestion(event); return false;">
-            Verify OTP & Proceed 🔓
-          </button>
-          <button type="button" id="btn-resend-otp" class="btn btn-outline" onclick="requestEmailOtp(true);" style="margin-top: 10px; width: 100%; font-size: 0.82rem;">
-            📩 Resend OTP Code to Email
-          </button>
-          <button type="button" class="btn btn-outline" onclick="cancelStep2();" style="margin-top: 10px; width: 100%;">
-            ← Back to Sign In
-          </button>
-        </form>
-      </div>
 
       <!-- STEP 3: Unified Portal Selection Landing Page Hub -->
       <div id="step3-container" style="display: none;">
