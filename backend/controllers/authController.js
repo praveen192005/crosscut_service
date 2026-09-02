@@ -248,10 +248,9 @@ const sendOtp = async (req, res) => {
     res.status(200).json({
       success: true,
       emailSent: sent,
-      otpCode: otpCode, // ALWAYS provide OTP code so user can verify instantly via email or screen badge
       message: sent
-        ? `6-Digit OTP code sent to ${targetEmail} (Check Inbox & Spam folder)`
-        : `Your 6-Digit OTP is ${otpCode} (Delivery note: ${deliveryNote})`,
+        ? `6-Digit OTP code sent to ${targetEmail}. Please check your Inbox and Spam folder.`
+        : `Email delivery note: ${deliveryNote}. Please check your email inbox.`,
       expiresIn: 600,
       targetEmail
     });
