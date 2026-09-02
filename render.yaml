@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: crosscut-service
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: npm install && cd backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: EMAIL_USER
+        value: praveenramalingam2005@gmail.com
+      - key: EMAIL_PASS
+        value: uwadmbjmktkdcptk
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "465"
+      - key: EMAIL_SECURE
+        value: "true"

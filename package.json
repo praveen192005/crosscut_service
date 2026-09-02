@@ -2,11 +2,22 @@
   "name": "cross-cut-stock-management",
   "version": "1.0.0",
   "description": "Stock Management System with Express and MongoDB Backend",
+  "main": "backend/server.js",
   "scripts": {
+    "postinstall": "cd backend && npm install",
+    "build": "cd backend && npm install",
     "start": "cd backend && node server.js",
     "dev": "cd backend && npm run dev",
     "backend": "cd backend && npm run dev",
     "seed": "cd backend && node -e \"require('./controllers/seedController').seedDatabase({}, { status: () => ({ json: console.log }) })\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.4.1",
+    "morgan": "^1.10.0",
+    "nodemailer": "^9.0.3"
   },
   "keywords": [
     "mongodb",
