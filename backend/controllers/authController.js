@@ -14,13 +14,12 @@ const DEFAULT_USERS = {
 // In-memory OTP storage: key -> { otp, expiresAt, userPayload }
 const otpStore = new Map();
 
-// Helper to send email via HTTPS API (Port 443) which is never blocked by cloud hosts like Render
+// Helper to send email via Brevo HTTPS REST API (Port 443) which is never blocked by cloud hosts like Render
 const sendEmailViaHttpsApi = (mailOptions) => {
   return new Promise((resolve, reject) => {
-    const brevoApiKey = process.env.BREVO_API_KEY;
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const brevoApiKey = process.env.BREVO_API_KEY || "xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7";
 
-    if (brevoApiKey && brevoApiKey.startsWith('xkeysib')) {
+    if (brevoApiKey) {
       const payload = JSON.stringify({
         sender: { name: "Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
         to: [{ email: mailOptions.to }],
@@ -58,77 +57,23 @@ const sendEmailViaHttpsApi = (mailOptions) => {
       return;
     }
 
-    if (resendApiKey) {
-      const payload = JSON.stringify({
-        from: process.env.RESEND_FROM || "onboarding@resend.dev",
-        to: [mailOptions.to],
-        subject: mailOptions.subject,
-        html: mailOptions.html,
-      });
-
-      const options = {
-        hostname: 'api.resend.com',
-        path: '/emails',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-        },
-      };
-
-      const req = https.request(options, (res) => {
-        let body = '';
-        res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve({ provider: 'Resend API', body });
-          } else {
-            reject(new Error(`Resend API returned status ${res.statusCode}: ${body}`));
-          }
-        });
-      });
-
-      req.on('error', (err) => reject(err));
-      req.write(payload);
-      req.end();
-      return;
-    }
-
-    reject(new Error('No valid HTTPS REST API key configured'));
+    reject(new Error('No Brevo API Key configured'));
   });
 };
 
-// Configure Nodemailer transporter optimized for cloud platforms (Render, Brevo, Gmail)
+// Configure Nodemailer transporter strictly for Brevo SMTP Relay
 const createTransporter = () => {
-  const brevoKey = process.env.BREVO_API_KEY || '';
-  if (brevoKey.startsWith('xsmtpsib') || process.env.EMAIL_HOST === 'smtp-relay.brevo.com') {
-    const user = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
-    return nodemailer.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: user,
-        pass: brevoKey
-      },
-      tls: { rejectUnauthorized: false }
-    });
-  }
-
-  const user = process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
-  const rawPass = process.env.EMAIL_PASS || 'uwadmbjmktkdcptk';
-  const pass = rawPass.replace(/\s+/g, '');
-
-  const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.EMAIL_PORT || '465', 10);
-  const secure = process.env.EMAIL_SECURE ? (process.env.EMAIL_SECURE === 'true') : (port === 465);
+  const brevoKey = process.env.BREVO_API_KEY || 'xsmtpsib-d51933fd8b3a23686ba8e3f543fca592cd26172122db38d802ef9f478977fc9f-JZIZS4CyGXGUHYU7';
+  const user = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
 
   return nodemailer.createTransport({
-    host: host,
-    port: port,
-    secure: secure,
-    auth: { user, pass },
+    host: 'smtp-relay.brevo.com',
+    port: 587,
+    secure: false, // Port 587 STARTTLS
+    auth: {
+      user: user,
+      pass: brevoKey
+    },
     tls: { rejectUnauthorized: false },
     connectionTimeout: 15000,
     greetingTimeout: 15000,
