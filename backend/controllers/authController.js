@@ -20,7 +20,7 @@ const sendEmailViaHttpsApi = (mailOptions) => {
     const brevoApiKey = process.env.BREVO_API_KEY;
     const resendApiKey = process.env.RESEND_API_KEY;
 
-    if (brevoApiKey) {
+    if (brevoApiKey && brevoApiKey.startsWith('xkeysib')) {
       const payload = JSON.stringify({
         sender: { name: "Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
         to: [{ email: mailOptions.to }],
@@ -95,15 +95,30 @@ const sendEmailViaHttpsApi = (mailOptions) => {
       return;
     }
 
-    reject(new Error('No HTTPS API Key configured'));
+    reject(new Error('No valid HTTPS REST API key configured'));
   });
 };
 
-// Configure Nodemailer transporter optimized for cloud platforms (Render, etc.)
+// Configure Nodemailer transporter optimized for cloud platforms (Render, Brevo, Gmail)
 const createTransporter = () => {
+  const brevoKey = process.env.BREVO_API_KEY || '';
+  if (brevoKey.startsWith('xsmtpsib') || process.env.EMAIL_HOST === 'smtp-relay.brevo.com') {
+    const user = process.env.BREVO_SMTP_USER || process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
+    return nodemailer.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: user,
+        pass: brevoKey
+      },
+      tls: { rejectUnauthorized: false }
+    });
+  }
+
   const user = process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com';
   const rawPass = process.env.EMAIL_PASS || 'uwadmbjmktkdcptk';
-  const pass = rawPass.replace(/\s+/g, ''); // Strip any space from Google App Password
+  const pass = rawPass.replace(/\s+/g, '');
 
   const host = process.env.EMAIL_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.EMAIL_PORT || '465', 10);
@@ -112,11 +127,9 @@ const createTransporter = () => {
   return nodemailer.createTransport({
     host: host,
     port: port,
-    secure: secure, // true for 465 (SSL direct socket), false for 587
+    secure: secure,
     auth: { user, pass },
-    tls: {
-      rejectUnauthorized: false
-    },
+    tls: { rejectUnauthorized: false },
     connectionTimeout: 15000,
     greetingTimeout: 15000,
     socketTimeout: 15000,
