@@ -21,7 +21,7 @@ const sendEmailViaHttpsApi = (mailOptions) => {
 
     if (brevoApiKey) {
       const payload = JSON.stringify({
-        sender: { name: "Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
+        sender: { name: "Brevo Mail - Cross Cut Enterprises", email: process.env.EMAIL_USER || "praveenramalingam2005@gmail.com" },
         to: [{ email: mailOptions.to }],
         subject: mailOptions.subject,
         htmlContent: mailOptions.html,
@@ -179,7 +179,7 @@ const sendOtp = async (req, res) => {
           </div>
           <p style="font-size: 13px; color: #666;">This code is valid for <strong>10 minutes</strong>. Do not share this code with anyone.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="font-size: 11px; color: #999; text-align: center;">Cross Cut Enterprises • Stock & Uniform Management System</p>
+          <p style="font-size: 11px; color: #888; text-align: center;">Sent via Brevo Mail Services • Cross Cut Enterprises</p>
         </div>
       `
     };
@@ -193,13 +193,13 @@ const sendOtp = async (req, res) => {
       try {
         const transporter = createTransporter();
         await transporter.sendMail({
-          from: `"Cross Cut Enterprises" <${process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com'}>`,
+          from: `"Brevo Mail - Cross Cut Enterprises" <${process.env.EMAIL_USER || 'praveenramalingam2005@gmail.com'}>`,
           ...mailOptions
         });
         sent = true;
       } catch (smtpErr) {
         deliveryNote = smtpErr.message || apiErr.message;
-        console.warn(`[OTP Send Note] Gmail SMTP delivery note: ${deliveryNote}`);
+        console.warn(`[OTP Send Note] Brevo delivery note: ${deliveryNote}`);
       }
     }
 
